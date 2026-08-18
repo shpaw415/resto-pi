@@ -85,13 +85,15 @@ export async function loadDashboard(
 ) {
 	const bootstrap = await loadAdminBootstrap(ctx);
 	if (!bootstrap.active) {
-		return { bootstrap, counts: null, recent: [] };
+		return { bootstrap, counts: null, recent: [], connection: null };
 	}
 	const recent = await listOrders(ctx, bootstrap.active.id);
+	const connection = await getPosConnection(ctx, bootstrap.active.id);
 	return {
 		bootstrap,
 		counts: countByStatus(recent),
 		recent: recent.slice(0, 8),
+		connection: connectionPublicView(connection),
 	};
 }
 

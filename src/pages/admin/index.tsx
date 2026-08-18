@@ -7,9 +7,11 @@ import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
 import Typography from "@shpaw415/mui-lite/Typography";
 import type { CtxData } from "../../action-utils/api-types";
+import { ColossalConnectionCard } from "../../components/admin/colossal-connection";
 import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { loadDashboard } from "../../lib/admin/load";
+import { canManagePos } from "../../lib/auth/roles";
 import { formatCad } from "../../lib/money";
 import { STATUS_LABELS } from "../../lib/orders/status";
 
@@ -65,6 +67,14 @@ export default function AdminHomePage() {
 							l’API.
 						</Typography>
 					)}
+					{bootstrap.active ? (
+						<ColossalConnectionCard
+							restaurantId={bootstrap.active.id}
+							restaurantName={bootstrap.active.name}
+							connection={data?.connection ?? null}
+							canEdit={canManagePos(bootstrap.identity.parsed)}
+						/>
+					) : null}
 					<Stack spacing={1.5}>
 						<Typography variant="h6" Element="h2">
 							Dernières commandes

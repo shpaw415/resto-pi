@@ -7,10 +7,10 @@ import Alert from "@shpaw415/mui-lite/Alert";
 import Button from "@shpaw415/mui-lite/Button";
 import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
-import TextField from "@shpaw415/mui-lite/TextField";
 import Typography from "@shpaw415/mui-lite/Typography";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CtxData } from "../../action-utils/api-types";
+import { ColossalConnectionCard } from "../../components/admin/colossal-connection";
 import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { loadPosPage } from "../../lib/admin/load";
@@ -36,24 +36,6 @@ export default function PosPage() {
 	const canEdit = canManagePos(bootstrap?.identity.parsed ?? null);
 	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const [baseUrl, setBaseUrl] = useState(connection?.config.baseUrl ?? "");
-	const [storeId, setStoreId] = useState(connection?.config.storeId ?? "");
-	const [apiKey, setApiKey] = useState("");
-	const [username, setUsername] = useState(connection?.config.username ?? "");
-	const [password, setPassword] = useState("");
-
-	useEffect(() => {
-		if (!connection?.config) {
-			return;
-		}
-		setBaseUrl(connection.config.baseUrl);
-		setStoreId(connection.config.storeId);
-		setUsername(connection.config.username);
-	}, [
-		connection?.config.baseUrl,
-		connection?.config.storeId,
-		connection?.config.username,
-	]);
 
 	async function run(action: "import" | "seed" | "ping") {
 		if (action !== "seed" && !bootstrap?.active) return;
@@ -80,22 +62,6 @@ export default function PosPage() {
 		window.location.reload();
 	}
 
-	async function saveConfig() {
-		if (!bootstrap?.active) return;
-		setError(null);
-		const result = await savePos(bootstrap.active.id, {
-			adapter: "colossal",
-			config: { baseUrl, storeId, apiKey, username, password },
-		});
-		if (!result || !("ok" in result) || !result.ok) {
-			setError("Impossible d’enregistrer POSIPAPI.");
-			return;
-		}
-		setMessage("Configuration POSIPAPI enregistrée.");
-		setApiKey("");
-		setPassword("");
-	}
-
 	return (
 		<AdminPageFrame bootstrap={bootstrap}>
 			{bootstrap ? (
@@ -105,9 +71,8 @@ export default function PosPage() {
 						Connexion POS
 					</Typography>
 					<Typography variant="body2" color="secondary">
-						Colossal parle POSIPAPI. Renseigne l’URL du module (souvent{" "}
-						<code>https://ton-resto.colossalepos.com/POSIPAPI</code>) puis
-						importe les commandes.
+						Clé et URL Colossal se règlent aussi sur le tableau de bord, par
+						établissement.
 					</Typography>
 					{message ? <Alert severity="success">{message}</Alert> : null}
 					{error ? <Alert severity="error">{error}</Alert> : null}
@@ -165,70 +130,13 @@ export default function PosPage() {
 							</Typography>
 						)}
 					</Paper>
-					{canEdit && bootstrap.active ? (
-						<Paper variant="outlined" className="p-4">
-							<Stack spacing={2}>
-								<Typography variant="subtitle1">POSIPAPI</Typography>
-								<TextField
-									name="posip-url"
-									label="URL de base"
-									value={baseUrl}
-									placeholder="https://resto.colossalepos.com/POSIPAPI"
-									onChange={(event) =>
-										setBaseUrl((event.target as HTMLInputElement).value)
-									}
-								/>
-								<TextField
-									name="posip-store"
-									label="ID magasin / store"
-									value={storeId}
-									onChange={(event) =>
-										setStoreId((event.target as HTMLInputElement).value)
-									}
-								/>
-								<TextField
-									name="posip-key"
-									label={
-										connection?.config.hasApiKey
-											? "Clé API (laisser vide pour conserver)"
-											: "Clé API"
-									}
-									type="password"
-									value={apiKey}
-									onChange={(event) =>
-										setApiKey((event.target as HTMLInputElement).value)
-									}
-								/>
-								<TextField
-									name="posip-user"
-									label="Utilisateur (optionnel)"
-									value={username}
-									onChange={(event) =>
-										setUsername((event.target as HTMLInputElement).value)
-									}
-								/>
-								<TextField
-									name="posip-pass"
-									label={
-										connection?.config.hasPassword
-											? "Mot de passe (laisser vide pour conserver)"
-											: "Mot de passe (optionnel)"
-									}
-									type="password"
-									value={password}
-									onChange={(event) =>
-										setPassword((event.target as HTMLInputElement).value)
-									}
-								/>
-								<Button
-									variant="contained"
-									color="primary"
-									onClick={() => void saveConfig()}
-								>
-									Enregistrer POSIPAPI
-								</Button>
-							</Stack>
-						</Paper>
+					{bootstrap.active ? (
+						<ColossalConnectionCard
+							restaurantId={bootstrap.active.id}
+							restaurantName={bootstrap.active.name}
+							connection={connection ?? null}
+							canEdit={canEdit}
+						/>
 					) : null}
 				</Stack>
 			) : null}

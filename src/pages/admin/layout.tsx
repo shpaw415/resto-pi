@@ -26,7 +26,7 @@ const adminNavItems = [
 	{ href: "/admin/catalogue", label: "Catalogue", description: "Produits et prix" },
 	{ href: "/admin/restaurants", label: "Restaurants", description: "Établissements" },
 	{ href: "/admin/api", label: "API", description: "Clés et scopes" },
-	{ href: "/admin/pos", label: "POS", description: "Import / mock" },
+	{ href: "/admin/pos", label: "POS", description: "Colossal / mock" },
 ];
 
 function isActive(pathname: string, href: string) {
