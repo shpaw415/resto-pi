@@ -86,6 +86,8 @@ const catchAllPatch: FrameMasterPlugin = {
 
 const nodePolyfillPlugin = NodePolyfills();
 
+const svgLoaderPlugin = SVGLoader();
+
 export default {
 	HTTPServer: {
 		port: 3000,
@@ -173,6 +175,11 @@ export default {
 							loader: "js",
 						},
 					},
+					build: {
+						buildConfig: {
+							entrypoints: ["@cf-process-env.js"],
+						},
+					},
 				},
 				{
 					name: "inject-node-polyfills",
@@ -181,6 +188,16 @@ export default {
 						getGlobalPluginContext("build-unifier")?.setBuildConfig?.(
 							"inject-node-polyfills",
 							nodePolyfillPlugin.build as BuildOptionsPlugin,
+						);
+					},
+				},
+				{
+					name: "svg-loader",
+					version: "1.0.0",
+					createContext() {
+						getGlobalPluginContext("build-unifier")?.setBuildConfig?.(
+							"svg-loader",
+							svgLoaderPlugin.build as BuildOptionsPlugin,
 						);
 					},
 				},
@@ -211,7 +228,7 @@ export default {
 			keepOriginal: true,
 			sizes: [320, 720, 1280],
 		}),
-		SVGLoader(),
+		svgLoaderPlugin,
 		AssetsToBuild({
 			paths: [
 				{
