@@ -1,5 +1,6 @@
 import type { CreateOrderInput } from "../orders/service";
 import type { ExternalOrder } from "./types";
+import { buildUeatSendOrderBody } from "./ueat-order";
 
 export type PosIpApiConfig = {
 	baseUrl: string;
@@ -13,9 +14,10 @@ export type PosIpApiConfig = {
 };
 
 export const DEFAULT_POSIP_PATHS = {
-	pullPath: "/orders",
-	pushPath: "/orders",
-	statusPath: "/orders/{id}/status",
+	pullPath: "/api/ueat/fetchmenu",
+	pushPath: "/api/ueat/sendorder",
+	statusPath: "/api/ueat/ordervalidation",
+	healthPath: "/api/ueat/healthcheck",
 } as const;
 
 export function parsePosIpConfig(raw: string | null | undefined): PosIpApiConfig {
@@ -31,7 +33,7 @@ export function parsePosIpConfig(raw: string | null | undefined): PosIpApiConfig
 	};
 	return {
 		baseUrl: text("baseUrl"),
-		storeId: text("storeId"),
+		storeId: text("locationId") || text("storeId"),
 		apiKey: text("apiKey"),
 		username: text("username"),
 		password: text("password"),
@@ -114,7 +116,14 @@ async function posipRequest(
 	if (!config.baseUrl) {
 		throw new Error("URL POSIPAPI manquante.");
 	}
-	const response = await fetch(joinUrl(config.baseUrl, path, id), {
+	const url = new URL(joinUrl(config.baseUrl, path, id));
+	if (
+		config.storeId &&
+		(path.includes("healthcheck") || path.includes("fetchmenu"))
+	) {
+		url.searchParams.set("locationId", config.storeId);
+	}
+	const response = await fetch(url, {
 		method,
 		headers: authHeaders(config),
 		body: body === undefined ? undefined : JSON.stringify(body),
@@ -127,6 +136,9 @@ async function posipRequest(
 		} catch {
 			data = text;
 		}
+	}
+	if (typeof data === "string" && data.includes("Fatal error")) {
+		throw new Error(`POSIPAPI PHP: ${data.replace(/<[^>]+>/g, " ").slice(0, 240)}`);
 	}
 	if (!response.ok) {
 		const message =
@@ -268,30 +280,49 @@ export async function posipPullOrders(
 	return mapPosIpOrders(payload, restaurantId);
 }
 
+export async function posipValidateOrder(
+	config: PosIpApiConfig,
+	order: CreateOrderInput,
+	orderId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+	if (!config.storeId) {
+		return { ok: false, error: "locationId manquant." };
+	}
+	const body = buildUeatSendOrderBody(config.storeId, order, { orderId });
+	const payload = await posipRequest(
+		config,
+		"POST",
+		"/api/ueat/ordervalidation",
+		body,
+	);
+	const record = asRecord(payload) ?? {};
+	if (record.isSuccessful === true) {
+		return { ok: true };
+	}
+	return {
+		ok: false,
+		error: pickString(record, "errorMessage", "error") || "Validation refusée.",
+	};
+}
+
 export async function posipPushOrder(
 	config: PosIpApiConfig,
 	order: CreateOrderInput,
+	orderId = `rp-${Date.now()}`,
 ): Promise<{ externalId: string }> {
-	const payload = await posipRequest(config, "POST", config.pushPath, {
-		storeId: config.storeId || undefined,
-		type: order.type,
-		customerName: order.customerName,
-		customerPhone: order.customerPhone,
-		customerAddress: order.customerAddress,
-		notes: order.notes,
-		items: order.items,
-	});
-	const record = asRecord(payload) ?? {};
-	const externalId = pickString(
-		record,
-		"id",
-		"externalId",
-		"orderId",
-		"OrderId",
-	);
-	if (!externalId) {
-		throw new Error("POSIPAPI n’a pas renvoyé d’identifiant commande.");
+	if (!config.storeId) {
+		throw new Error("locationId manquant.");
 	}
+	const body = buildUeatSendOrderBody(config.storeId, order, { orderId });
+	const payload = await posipRequest(config, "POST", config.pushPath, body);
+	const record = asRecord(payload) ?? {};
+	if (record.isSuccessful === false) {
+		throw new Error(
+			pickString(record, "errorMessage", "error") || "sendorder refusé.",
+		);
+	}
+	const externalId =
+		pickString(record, "id", "externalId", "orderId", "OrderId") || orderId;
 	return { externalId };
 }
 
@@ -310,6 +341,15 @@ export async function posipSyncStatus(
 }
 
 export async function posipPing(config: PosIpApiConfig): Promise<string> {
-	await posipRequest(config, "GET", config.pullPath);
-	return "Connexion POSIPAPI OK.";
+	const payload = await posipRequest(
+		config,
+		"GET",
+		DEFAULT_POSIP_PATHS.healthPath,
+	);
+	const record = asRecord(payload) ?? {};
+	const status = pickString(record, "status");
+	if (status && status !== "Ok") {
+		throw new Error(`healthcheck: ${status}`);
+	}
+	return `Connexion POSIPAPI OK (${status || "ok"}).`;
 }

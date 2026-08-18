@@ -5,6 +5,7 @@ import {
 	posipPullOrders,
 	posipPushOrder,
 	posipSyncStatus,
+	posipValidateOrder,
 } from "./posipapi";
 import type { ExternalOrder, PosAdapter } from "./types";
 
@@ -35,5 +36,9 @@ export class ColossalPosAdapter implements PosAdapter {
 
 	async ping(): Promise<string> {
 		return posipPing(this.config);
+	}
+
+	async validateOrder(order: CreateOrderInput, orderId: string) {
+		return posipValidateOrder(this.config, order, orderId);
 	}
 }
