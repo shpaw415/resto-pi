@@ -5,6 +5,7 @@ import type { CtxData } from "../../../../action-utils/api-types";
 import type { PosAdapterId } from "../../../../db/schema";
 import { getAccessibleRestaurant } from "../../../../lib/auth/guard";
 import { canManagePos } from "../../../../lib/auth/roles";
+import { syncCatalogFromPos } from "../../../../lib/catalog/sync-pos";
 import { seedDemoData } from "../../../../lib/dev/seed";
 import {
 	createOrder,
@@ -67,7 +68,7 @@ export async function PUT(
 
 export async function POST(
 	restaurantId: string | null,
-	action: "import" | "seed" | "ping",
+	action: "import" | "seed" | "ping" | "sync-menu",
 ) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
@@ -100,6 +101,18 @@ export async function POST(
 				return { ok: true as const, message: "Mock : rien à tester." };
 			}
 			return { ok: true as const, message: await adapter.ping() };
+		}
+		if (action === "sync-menu") {
+			if (!adapter.fetchMenu) {
+				return { ok: false as const, error: "Ce POS ne fournit pas de menu." };
+			}
+			const menu = await adapter.fetchMenu();
+			const synced = await syncCatalogFromPos(ctx, restaurantId, menu);
+			return {
+				ok: true as const,
+				message: `Menu POS : ${synced.products} produits, ${synced.categories} catégories.`,
+				synced,
+			};
 		}
 		const incoming = await adapter.pullNewOrders(restaurantId);
 		const created: string[] = [];

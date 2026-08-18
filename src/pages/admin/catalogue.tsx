@@ -1,13 +1,12 @@
 "use dynamic";
 
-import { DELETE as archiveProduct, POST as saveCatalog } from "@api/private/admin/catalog";
+import { POST as posAction } from "@api/private/admin/pos";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
 import Button from "@shpaw415/mui-lite/Button";
 import Chip from "@shpaw415/mui-lite/Chip";
 import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
-import TextField from "@shpaw415/mui-lite/TextField";
 import Typography from "@shpaw415/mui-lite/Typography";
 import { useState } from "react";
 import type { CtxData } from "../../action-utils/api-types";
@@ -15,7 +14,7 @@ import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { loadCatalogPage } from "../../lib/admin/load";
 import { canManageCatalog } from "../../lib/auth/roles";
-import { formatCad, parsePriceToCents } from "../../lib/money";
+import { formatCad } from "../../lib/money";
 
 export const ssr_configs = createPageConfig({
 	callback() {
@@ -36,48 +35,19 @@ export default function CatalogPage() {
 	const data = useLoader(loader_catalog);
 	const bootstrap = data?.bootstrap;
 	const canEdit = canManageCatalog(bootstrap?.identity.parsed ?? null);
-	const [categoryName, setCategoryName] = useState("");
-	const [productName, setProductName] = useState("");
-	const [price, setPrice] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [busy, setBusy] = useState(false);
 
-	async function addCategory() {
+	async function syncMenu() {
 		if (!bootstrap?.active) return;
-		const result = await saveCatalog("category", {
-			restaurantId: bootstrap.active.id,
-			name: categoryName,
-		});
+		setBusy(true);
+		setError(null);
+		const result = await posAction(bootstrap.active.id, "sync-menu");
+		setBusy(false);
 		if (!result.ok) {
 			setError(result.error);
 			return;
 		}
-		window.location.reload();
-	}
-
-	async function addProduct() {
-		if (!bootstrap?.active) return;
-		const cents = parsePriceToCents(price);
-		if (cents == null) {
-			setError("Prix invalide.");
-			return;
-		}
-		const categoryId = data?.catalog?.categories[0]?.id ?? null;
-		const result = await saveCatalog("product", {
-			restaurantId: bootstrap.active.id,
-			categoryId,
-			name: productName,
-			variants: [{ name: "Standard", priceCents: cents }],
-		});
-		if (!result.ok) {
-			setError(result.error);
-			return;
-		}
-		window.location.reload();
-	}
-
-	async function removeProduct(id: string) {
-		if (!bootstrap?.active) return;
-		await archiveProduct(bootstrap.active.id, id);
 		window.location.reload();
 	}
 
@@ -89,50 +59,23 @@ export default function CatalogPage() {
 					<Typography variant="h5" Element="h1">
 						Catalogue
 					</Typography>
+					<Typography variant="body2" color="secondary">
+						Source de vérité : menu Colossal (`fetchmenu`). Les articles absents
+						du POS sont archivés à la sync.
+					</Typography>
 					{error ? <Typography color="error">{error}</Typography> : null}
 					{canEdit ? (
-						<Paper variant="outlined" className="p-4">
-							<Stack spacing={2}>
-								<Typography variant="subtitle1">Nouvelle catégorie</Typography>
-								<TextField
-									label="Nom"
-									value={categoryName}
-									onChange={(event) =>
-										setCategoryName(
-											(event.target as HTMLInputElement).value,
-										)
-									}
-								/>
-								<Button variant="outlined" onClick={() => void addCategory()}>
-									Ajouter la catégorie
-								</Button>
-								<Typography variant="subtitle1">Nouveau produit</Typography>
-								<TextField
-									label="Nom"
-									value={productName}
-									onChange={(event) =>
-										setProductName((event.target as HTMLInputElement).value)
-									}
-								/>
-								<TextField
-									label="Prix (CAD)"
-									value={price}
-									onChange={(event) =>
-										setPrice((event.target as HTMLInputElement).value)
-									}
-								/>
-								<Button
-									variant="contained"
-									color="primary"
-									onClick={() => void addProduct()}
-								>
-									Ajouter le produit
-								</Button>
-							</Stack>
-						</Paper>
+						<Button
+							variant="contained"
+							color="primary"
+							disabled={busy}
+							onClick={() => void syncMenu()}
+						>
+							Synchroniser depuis le POS
+						</Button>
 					) : (
 						<Typography color="secondary">
-							Lecture seule — rôle admin requis pour modifier le catalogue.
+							Lecture seule — rôle admin requis pour synchroniser.
 						</Typography>
 					)}
 					<div className="grid gap-3 md:grid-cols-2">
@@ -149,9 +92,17 @@ export default function CatalogPage() {
 											{product.description}
 										</Typography>
 									</div>
-									{!product.isActive ? (
-										<Chip size="small" label="Archivé" />
-									) : null}
+									<Stack direction="row" spacing={0.5}>
+										{product.variants.some((variant) => variant.sku) ? (
+											<Chip size="small" label="POS" color="primary" />
+										) : null}
+										{product.description === "Option POS" ? (
+											<Chip size="small" label="Option" />
+										) : null}
+										{!product.isActive ? (
+											<Chip size="small" label="Archivé" />
+										) : null}
+									</Stack>
 								</Stack>
 								<Stack spacing={0.5} className="mt-2">
 									{product.variants.map((variant) => (
@@ -160,14 +111,10 @@ export default function CatalogPage() {
 										</Typography>
 									))}
 								</Stack>
-								{canEdit && product.isActive ? (
-									<Button
-										size="small"
-										color="secondary"
-										onClick={() => void removeProduct(product.id)}
-									>
-										Archiver
-									</Button>
+								{product.variants[0]?.sku ? (
+									<Typography variant="caption" color="secondary">
+										id POS {product.variants[0].sku}
+									</Typography>
 								) : null}
 							</Paper>
 						))}

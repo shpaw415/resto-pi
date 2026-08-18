@@ -82,6 +82,23 @@ export function ColossalConnectionCard({
 		setApiKey("");
 	}
 
+	async function syncMenu() {
+		setBusy(true);
+		setError(null);
+		const result = await posAction(restaurantId, "sync-menu");
+		setBusy(false);
+		if (!result.ok) {
+			setError(result.error);
+			return;
+		}
+		setMessage(
+			"message" in result && result.message
+				? String(result.message)
+				: "Menu importé.",
+		);
+		window.setTimeout(() => window.location.reload(), 500);
+	}
+
 	async function ping() {
 		setBusy(true);
 		setError(null);
@@ -181,6 +198,13 @@ export function ColossalConnectionCard({
 								onClick={() => void ping()}
 							>
 								Tester healthcheck
+							</Button>
+							<Button
+								variant="outlined"
+								disabled={busy}
+								onClick={() => void syncMenu()}
+							>
+								Importer le menu POS
 							</Button>
 						</Stack>
 					</>

@@ -18,4 +18,5 @@ export interface PosAdapter {
 		status: string,
 	): Promise<void>;
 	ping?(): Promise<string>;
+	fetchMenu?(): Promise<import("./posipapi").PosMenuItem[]>;
 }

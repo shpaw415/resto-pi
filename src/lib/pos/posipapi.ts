@@ -272,6 +272,61 @@ export function mapPosIpOrders(
 	return orders;
 }
 
+export type PosMenuItem = {
+	id: string;
+	name: string;
+	availability: string;
+	group: string;
+	itemType: string;
+	prices: Array<{ price: number; service: string }>;
+};
+
+export function parseFetchMenu(payload: unknown): PosMenuItem[] {
+	const root = asRecord(payload);
+	const list = Array.isArray(payload)
+		? payload
+		: Array.isArray(root?.items)
+			? root.items
+			: [];
+	const items: PosMenuItem[] = [];
+	for (const entry of list) {
+		const row = asRecord(entry);
+		if (!row) continue;
+		const id = pickString(row, "id");
+		if (!id) continue;
+		const pricesRaw = Array.isArray(row.prices) ? row.prices : [];
+		items.push({
+			id,
+			name: pickString(row, "name") || id,
+			availability: pickString(row, "availability") || "Available",
+			group: pickString(row, "group").trim() || "Divers",
+			itemType: pickString(row, "itemType") || "Item",
+			prices: pricesRaw.flatMap((price) => {
+				const rec = asRecord(price);
+				if (!rec) return [];
+				return [
+					{
+						price: pickNumber(rec, "price"),
+						service: pickString(rec, "service") || "Takeout",
+					},
+				];
+			}),
+		});
+	}
+	return items;
+}
+
+export async function posipFetchMenu(
+	config: PosIpApiConfig,
+): Promise<PosMenuItem[]> {
+	const payload = await posipRequest(
+		config,
+		"GET",
+		DEFAULT_POSIP_PATHS.pullPath,
+	);
+	return parseFetchMenu(payload);
+}
+
 export async function posipPullOrders(
 	config: PosIpApiConfig,
 	restaurantId: string,

@@ -1,6 +1,7 @@
 import type { CreateOrderInput } from "../orders/service";
 import {
 	type PosIpApiConfig,
+	posipFetchMenu,
 	posipPing,
 	posipPullOrders,
 	posipPushOrder,
@@ -32,6 +33,10 @@ export class ColossalPosAdapter implements PosAdapter {
 		status: string,
 	): Promise<void> {
 		await posipSyncStatus(this.config, externalId, status);
+	}
+
+	async fetchMenu() {
+		return posipFetchMenu(this.config);
 	}
 
 	async ping(): Promise<string> {
