@@ -60,6 +60,17 @@ export function canManagePos(parsed: ParsedRole | null): boolean {
 	return canManageCatalog(parsed);
 }
 
+export function canTrackCouriers(parsed: ParsedRole | null): boolean {
+	return canAccessAdmin(parsed);
+}
+
+export function canShareCourierPosition(parsed: ParsedRole | null): boolean {
+	if (!parsed) {
+		return false;
+	}
+	return parsed.permission === "courier" || parsed.isPlatformOwner;
+}
+
 export function canChangeOrderStatus(parsed: ParsedRole | null): boolean {
 	return canAccessAdmin(parsed);
 }

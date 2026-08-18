@@ -14,6 +14,10 @@ export default function HomePage() {
 			return;
 		}
 		const parsed = parseIssuerRole(session.data?.role);
+		if (parsed?.permission === "courier") {
+			navigate("/livreur");
+			return;
+		}
 		if (
 			parsed &&
 			(parsed.permission === "admin" || parsed.permission === "user")

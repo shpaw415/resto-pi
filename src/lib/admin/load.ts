@@ -11,6 +11,10 @@ import { listCatalog } from "../catalog/admin";
 import { countByStatus, listOrders } from "../orders/service";
 import { listApiKeys } from "../api-keys/service";
 import { connectionPublicView, getPosConnection } from "../pos/registry";
+import {
+	getRestaurantMapCenter,
+	listLatestCourierPositions,
+} from "../tracking/service";
 
 export type AdminBootstrap = {
 	identity: UserIdentity;
@@ -132,6 +136,30 @@ export async function loadApiPage(ctx: EventContext<Env, never, CtxData>) {
 		bootstrap,
 		keys: await listApiKeys(ctx, bootstrap.active.id),
 	};
+}
+
+export async function loadSuiviPage(ctx: EventContext<Env, never, CtxData>) {
+	const bootstrap = await loadAdminBootstrap(ctx);
+	if (!bootstrap.active) {
+		return {
+			bootstrap,
+			couriers: [],
+			center: { lat: 45.5017, lng: -73.5673, name: "Montréal" },
+		};
+	}
+	const [couriers, center] = await Promise.all([
+		listLatestCourierPositions(ctx, bootstrap.active.id),
+		getRestaurantMapCenter(ctx, bootstrap.active.id),
+	]);
+	return { bootstrap, couriers, center };
+}
+
+export async function loadLivreurPage(ctx: EventContext<Env, never, CtxData>) {
+	const bootstrap = await loadAdminBootstrap(ctx);
+	const center = bootstrap.active
+		? await getRestaurantMapCenter(ctx, bootstrap.active.id)
+		: { lat: 45.5017, lng: -73.5673, name: "Restaurant" };
+	return { bootstrap, center };
 }
 
 export async function loadPosPage(ctx: EventContext<Env, never, CtxData>) {

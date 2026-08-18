@@ -23,6 +23,7 @@ import { logoutClient } from "../../lib/auth/access-token-cookie";
 const adminNavItems = [
 	{ href: "/admin", label: "Tableau de bord", description: "Compteurs" },
 	{ href: "/admin/commandes", label: "Commandes", description: "Statuts cuisine" },
+	{ href: "/admin/suivi", label: "Livreurs", description: "Carte temps réel" },
 	{ href: "/admin/catalogue", label: "Catalogue", description: "Produits et prix" },
 	{ href: "/admin/restaurants", label: "Restaurants", description: "Établissements" },
 	{ href: "/admin/api", label: "API", description: "Clés et scopes" },

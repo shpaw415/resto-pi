@@ -66,6 +66,10 @@ export default function LoginPage() {
 		if (!parsed) {
 			return;
 		}
+		if (parsed.permission === "courier") {
+			window.location.assign("/livreur");
+			return;
+		}
 		if (parsed.permission === "admin" || parsed.permission === "user") {
 			window.location.assign("/admin");
 		}

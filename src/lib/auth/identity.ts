@@ -101,8 +101,14 @@ export function identityToPublicSession(
 }
 
 export function postAuthHomePath(identity: UserIdentity): string {
+	if (canEnterCourier(identity) && !canEnterAdmin(identity)) {
+		return "/livreur";
+	}
 	if (canEnterAdmin(identity)) {
 		return "/admin";
+	}
+	if (canEnterCourier(identity)) {
+		return "/livreur";
 	}
 	return "/login";
 }
@@ -113,4 +119,12 @@ export function canEnterAdmin(identity: UserIdentity): boolean {
 		return false;
 	}
 	return parsed.permission === "admin" || parsed.permission === "user";
+}
+
+export function canEnterCourier(identity: UserIdentity): boolean {
+	const parsed = identity.parsed;
+	if (!parsed) {
+		return false;
+	}
+	return parsed.permission === "courier" || parsed.isPlatformOwner;
 }
