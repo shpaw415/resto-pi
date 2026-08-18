@@ -1,0 +1,78 @@
+@import "tailwindcss";
+@import "@shpaw415/mui-lite/style.css";
+
+html {
+	height: auto;
+	max-width: none;
+	width: auto;
+	overflow-x: clip;
+	overflow-y: auto;
+}
+
+body {
+	margin: 0;
+	height: auto;
+	min-height: 100dvh;
+	max-width: none;
+	width: auto;
+	min-width: 0;
+	overflow-x: clip;
+	overflow-y: visible;
+	display: block;
+	font-family: Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	background-color: rgb(var(--bg-main, 246, 241, 234));
+	color: rgb(var(--text-main, 36, 28, 22));
+}
+
+html.theme-ready body,
+html.theme-ready .MUI_Theme_Wrapper {
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+}
+
+html[data-theme="dark"] {
+	--bg-main: 22, 19, 17;
+	--bg-surface: 35, 30, 27;
+	--bg-primary: 245, 158, 11;
+	--bg-secondary: 111, 159, 134;
+	--bg-success: 67, 160, 71;
+	--bg-error: 229, 57, 53;
+	--bg-warning: 251, 140, 0;
+	--text-primary: 251, 191, 36;
+	--text-secondary: 196, 184, 173;
+	--text-main: 255, 248, 241;
+	--text-error: 239, 154, 154;
+	--text-success: 165, 214, 167;
+	--text-warning: 255, 204, 128;
+	--text-info: 79, 195, 247;
+	color-scheme: dark;
+}
+
+html[data-theme="dark"] body,
+html[data-theme="dark"] .MUI_Theme_Wrapper {
+	background-color: #161311;
+	color: #fff8f1;
+}
+
+body > .MUI_Theme_Wrapper,
+.MUI_Theme_Wrapper {
+	display: block;
+	width: 100%;
+	min-height: 100dvh;
+	height: auto;
+	overflow: visible;
+	background-color: rgb(var(--bg-main, 246, 241, 234));
+	color: rgb(var(--text-main, 36, 28, 22));
+}
+
+@layer base {
+	.MUI_IconButton svg,
+	.MUI_ListItemIcon svg {
+		width: 1.5rem;
+		height: 1.5rem;
+		fill: currentColor;
+	}
+}
