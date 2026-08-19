@@ -88,6 +88,15 @@ const nodePolyfillPlugin = NodePolyfills();
 
 const svgLoaderPlugin = SVGLoader();
 
+const imageOptimizerPlugin = imageOptimizer({
+	input: "images",
+	output: "optimized",
+	skipExisting: true,
+	formats: ["webp"],
+	keepOriginal: true,
+	sizes: [320, 720, 1280],
+});
+
 export default {
 	HTTPServer: {
 		port: 3000,
@@ -201,6 +210,16 @@ export default {
 						);
 					},
 				},
+				{
+					name: "image-optimizer",
+					version: "1.0.0",
+					createContext() {
+						getGlobalPluginContext("build-unifier")?.setBuildConfig?.(
+							"image-optimizer",
+							imageOptimizerPlugin.build as BuildOptionsPlugin,
+						);
+					},
+				},
 			],
 		}),
 		ServeFromBuild({
@@ -220,14 +239,7 @@ export default {
 				runtime: "bun",
 			},
 		}),
-		imageOptimizer({
-			input: "images",
-			output: "optimized",
-			skipExisting: true,
-			formats: ["webp"],
-			keepOriginal: true,
-			sizes: [320, 720, 1280],
-		}),
+		imageOptimizerPlugin,
 		svgLoaderPlugin,
 		AssetsToBuild({
 			paths: [
