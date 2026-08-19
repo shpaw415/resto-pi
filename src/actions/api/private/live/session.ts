@@ -29,6 +29,7 @@ export async function GET(restaurantId: string) {
 			url: `/api/private/live/connect?restaurantId=${encodeURIComponent(access.restaurantId)}`,
 			restaurantId: access.restaurantId,
 			authorKind: access.authorKind,
+			userId: access.identity.id!,
 		} satisfies LiveSession;
 	}
 	const origin = (
@@ -52,5 +53,6 @@ export async function GET(restaurantId: string) {
 		ticket,
 		restaurantId: access.restaurantId,
 		authorKind: access.authorKind,
+		userId: access.identity.id!,
 	} satisfies LiveSession;
 }

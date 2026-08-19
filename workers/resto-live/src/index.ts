@@ -113,6 +113,21 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			await this.handleArchive(peer);
 			return;
 		}
+		if (inbound.type === "punch-out") {
+			if (peer.kind !== "courier") {
+				return;
+			}
+			await this.removeCourier(peer.restaurantId, peer.userId);
+			return;
+		}
+		if (inbound.type === "remove-courier") {
+			if (peer.kind !== "staff") {
+				jsonSend(ws, { type: "error", error: "Retrait réservé au resto." });
+				return;
+			}
+			await this.removeCourier(peer.restaurantId, inbound.courierUserId);
+			return;
+		}
 		await this.handleChat(peer, inbound);
 	}
 
@@ -473,6 +488,28 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			.bind(new Date().toISOString(), peer.restaurantId)
 			.run();
 		this.broadcast({ type: "alerts-archived", ids });
+	}
+
+	private async removeCourier(restaurantId: string, courierUserId: string) {
+		this.ctx.storage.sql.exec(
+			"DELETE FROM positions WHERE courier_user_id = ?",
+			courierUserId,
+		);
+		await this.env.DB.prepare(
+			`UPDATE courier_duty
+			 SET punched_in = 0, punched_out_at = ?, updated_at = ?
+			 WHERE restaurant_id = ? AND courier_user_id = ?`,
+		)
+			.bind(new Date().toISOString(), new Date().toISOString(), restaurantId, courierUserId)
+			.run();
+		this.broadcast({ type: "courier-removed", courierUserId });
+		for (const socket of this.ctx.getWebSockets()) {
+			const peer = socket.deserializeAttachment() as SocketState | null;
+			if (peer?.kind === "courier" && peer.userId === courierUserId) {
+				socket.close(4000, "punch-out");
+			}
+		}
+		this.broadcastPresence();
 	}
 
 	private broadcast(payload: LiveOutbound) {

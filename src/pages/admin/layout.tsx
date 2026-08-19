@@ -1,4 +1,4 @@
-import { useAuth } from "@hooks/useAuth";
+import { useAuth, useAuthSession } from "@hooks/useAuth";
 import { usePath } from "@hooks/usePath";
 import CloseIcon from "@material-design-icons/svg/filled/close.svg";
 import LogoutIcon from "@material-design-icons/svg/filled/logout.svg";
@@ -20,6 +20,7 @@ import Typography from "@shpaw415/mui-lite/Typography";
 import { navigate } from "frame-master-plugin-apply-react/utils";
 import { useEffect, useState } from "react";
 import { logoutClient } from "../../lib/auth/access-token-cookie";
+import { parseIssuerRole } from "../../lib/auth/roles";
 
 const DRAWER_WIDTH = 260;
 
@@ -46,6 +47,7 @@ export default function AdminLayout({
 	children: React.JSX.Element;
 }) {
 	const auth = useAuth();
+	const session = useAuthSession();
 	const pathname = usePath();
 	const [open, setOpen] = useState(false);
 	const [wide, setWide] = useState(false);
@@ -67,9 +69,17 @@ export default function AdminLayout({
 		window.location.assign("/login");
 	}
 
+	const parsed = parseIssuerRole(
+		session.data?.role ??
+			(auth as { userMeta?: { role?: string } } | null)?.userMeta?.role,
+	);
+	const pageLabel = adminNavItems.find((item) =>
+		isActive(pathname, item.href),
+	)?.label;
 	const currentLabel =
-		adminNavItems.find((item) => isActive(pathname, item.href))?.label ??
-		"Admin";
+		parsed?.permission === "user"
+			? `staff ${parsed.tenant}`
+			: (pageLabel ?? "Admin");
 
 	const navList = (
 		<List disablePadding className="py-1">

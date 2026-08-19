@@ -9,6 +9,7 @@ import {
 	users,
 } from "../../db/schema";
 import { geocodeAddress, withQuebecHint } from "../geo/nominatim";
+import { listActiveCourierIds } from "./duty";
 import { COURIER_ALERT_LABELS } from "./labels";
 
 export { COURIER_ALERT_LABELS };
@@ -76,9 +77,10 @@ export async function listLatestCourierPositions(
 		.orderBy(desc(courierPositions.recordedAt))
 		.all();
 	const people = await db.select().from(users).all();
+	const active = await listActiveCourierIds(ctx, restaurantId);
 	const byUser = new Map<string, CourierLivePosition>();
 	for (const row of rows) {
-		if (byUser.has(row.courierUserId)) {
+		if (byUser.has(row.courierUserId) || !active.has(row.courierUserId)) {
 			continue;
 		}
 		const person = people.find((user) => user.id === row.courierUserId);

@@ -22,7 +22,13 @@ type LivreurTrackingValue = {
 
 const LivreurTrackingCtx = createContext<LivreurTrackingValue | null>(null);
 
-export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
+export function LivreurTrackingProvider({
+	active = true,
+	children,
+}: {
+	active?: boolean;
+	children: ReactNode;
+}) {
 	const live = useOptionalRestoLive();
 	const [tracking, setTracking] = useState(false);
 	const [coords, setCoords] = useState<Coords | null>(null);
@@ -43,7 +49,21 @@ export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
 	}
 
 	useEffect(() => {
-		if (!tracking) {
+		if (!active && tracking) {
+			setTracking(false);
+			setStatus("GPS arrêté");
+		}
+	}, [active, tracking]);
+
+	useEffect(() => {
+		if (active && live?.connected && !tracking) {
+			setTracking(true);
+			setStatus("Recherche GPS…");
+		}
+	}, [active, live?.connected]);
+
+	useEffect(() => {
+		if (!tracking || !active) {
 			return;
 		}
 		if (!navigator.geolocation) {

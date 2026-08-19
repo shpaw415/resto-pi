@@ -9,6 +9,7 @@ import Stack from "@shpaw415/mui-lite/Stack";
 import Typography from "@shpaw415/mui-lite/Typography";
 import type { CtxData } from "../../action-utils/api-types";
 import { useLivreurTracking } from "../../hooks/useLivreurTracking";
+import { useOptionalRestoLive } from "../../hooks/useRestoLive";
 import { loadLivreurPage } from "../../lib/admin/load";
 import { logoutClient } from "../../lib/auth/access-token-cookie";
 import { canEnterCourier } from "../../lib/auth/identity";
@@ -31,6 +32,7 @@ export const loader_livreur_compte = createLoader({
 export default function LivreurComptePage() {
 	const auth = useAuth();
 	const tracking = useLivreurTracking();
+	const live = useOptionalRestoLive();
 	const data = useLoader(loader_livreur_compte);
 	if (!data) {
 		return null;
@@ -71,6 +73,15 @@ export default function LivreurComptePage() {
 				onClick={tracking.toggle}
 			>
 				{tracking.tracking ? "Arrêter le GPS" : "Démarrer le GPS"}
+			</Button>
+			<Button
+				variant="outlined"
+				color="secondary"
+				size="large"
+				fullWidth
+				onClick={() => live?.punchOut()}
+			>
+				Pointer la sortie
 			</Button>
 			<Button
 				variant="outlined"

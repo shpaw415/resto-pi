@@ -1,6 +1,7 @@
 "use dynamic";
 
 import { POST as archiveAlertsHttp } from "@api/private/admin/alerts";
+import { POST as removeCourierHttp } from "@api/private/admin/duty";
 import { RestoLiveProvider, useRestoLive } from "../../hooks/useRestoLive";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
@@ -203,6 +204,7 @@ function SuiviBody() {
 										direction="row"
 										justifyContent="space-between"
 										alignItems="center"
+										spacing={1}
 									>
 										<div>
 											<Typography variant="subtitle2">
@@ -212,11 +214,31 @@ function SuiviBody() {
 												{courier.lat.toFixed(5)}, {courier.lng.toFixed(5)}
 											</Typography>
 										</div>
-										<Chip
-											size="small"
-											color="primary"
-											label={ageLabel(courier.recordedAt)}
-										/>
+										<Stack direction="row" spacing={1} alignItems="center">
+											<Chip
+												size="small"
+												color="primary"
+												label={ageLabel(courier.recordedAt)}
+											/>
+											<Button
+												size="small"
+												variant="outlined"
+												onClick={() => {
+													if (live.removeCourier(courier.courierUserId)) {
+														return;
+													}
+													const restaurantId = initial?.bootstrap.active?.id;
+													if (restaurantId) {
+														void removeCourierHttp(
+															restaurantId,
+															courier.courierUserId,
+														);
+													}
+												}}
+											>
+												Retirer
+											</Button>
+										</Stack>
 									</Stack>
 								</Paper>
 							))

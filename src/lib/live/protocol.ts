@@ -31,6 +31,8 @@ export type LiveInbound =
 	| { type: "chat"; body: string; courierUserId: string }
 	| { type: "alert"; kind: CourierAlertKind }
 	| { type: "archive-alerts" }
+	| { type: "punch-out" }
+	| { type: "remove-courier"; courierUserId: string }
 	| { type: "ping" };
 
 export type LiveOutbound =
@@ -46,6 +48,7 @@ export type LiveOutbound =
 	| { type: "alert"; alert: LiveAlert }
 	| { type: "alerts-archived"; ids: string[] }
 	| { type: "presence"; onlineCourierIds: string[] }
+	| { type: "courier-removed"; courierUserId: string }
 	| { type: "error"; error: string }
 	| { type: "pong" };
 
@@ -56,6 +59,7 @@ export type LiveSession = {
 	ticket?: string;
 	restaurantId: string;
 	authorKind: ChatAuthorKind;
+	userId: string;
 };
 
 export function parseInbound(raw: string): LiveInbound | null {
@@ -64,7 +68,14 @@ export function parseInbound(raw: string): LiveInbound | null {
 		if (!data || typeof data !== "object" || !("type" in data)) {
 			return null;
 		}
-		if (data.type === "ping" || data.type === "archive-alerts") {
+		if (
+			data.type === "ping" ||
+			data.type === "archive-alerts" ||
+			data.type === "punch-out"
+		) {
+			return data;
+		}
+		if (data.type === "remove-courier" && typeof data.courierUserId === "string") {
 			return data;
 		}
 		if (data.type === "alert" && typeof data.kind === "string") {

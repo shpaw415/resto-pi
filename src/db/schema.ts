@@ -303,6 +303,29 @@ export const clientNotes = sqliteTable(
 	}),
 );
 
+export const courierDuty = sqliteTable(
+	"courier_duty",
+	{
+		id: text("id").primaryKey(),
+		restaurantId: text("restaurant_id")
+			.notNull()
+			.references(() => restaurants.id, { onDelete: "cascade" }),
+		courierUserId: text("courier_user_id")
+			.notNull()
+			.references(() => users.id, { onDelete: "cascade" }),
+		punchedIn: integer("punched_in", { mode: "boolean" }).notNull().default(false),
+		punchedInAt: text("punched_in_at"),
+		punchedOutAt: text("punched_out_at"),
+		...timestampColumns,
+	},
+	(table) => ({
+		dutyIdx: uniqueIndex("courier_duty_resto_user_idx").on(
+			table.restaurantId,
+			table.courierUserId,
+		),
+	}),
+);
+
 export const courierPositions = sqliteTable("courier_positions", {
 	id: text("id").primaryKey(),
 	restaurantId: text("restaurant_id")

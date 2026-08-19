@@ -24,6 +24,8 @@ type RestoLiveValue = {
 	sendPosition: (lat: number, lng: number) => boolean;
 	sendAlert: (kind: CourierAlertKind) => boolean;
 	archiveAlerts: () => boolean;
+	punchOut: () => boolean;
+	removeCourier: (courierUserId: string) => boolean;
 };
 
 const RestoLiveCtx = createContext<RestoLiveValue | null>(null);
@@ -39,9 +41,13 @@ function toWsUrl(url: string) {
 
 export function RestoLiveProvider({
 	restaurantId,
+	enabled = true,
+	onForceClockOut,
 	children,
 }: {
 	restaurantId?: string;
+	enabled?: boolean;
+	onForceClockOut?: () => void;
 	children: ReactNode;
 }) {
 	const [connected, setConnected] = useState(false);
@@ -50,19 +56,32 @@ export function RestoLiveProvider({
 	const [onlineCourierIds, setOnlineCourierIds] = useState<string[]>([]);
 	const [alerts, setAlerts] = useState<LiveAlert[]>([]);
 	const [authorKind, setAuthorKind] = useState<ChatAuthorKind>("staff");
+	const selfIdRef = useRef("");
 	const socketRef = useRef<WebSocket | null>(null);
+	const enabledRef = useRef(enabled);
+	enabledRef.current = enabled;
 
 	useEffect(() => {
+		if (!enabled) {
+			socketRef.current?.close();
+			socketRef.current = null;
+			setConnected(false);
+			return;
+		}
 		let closed = false;
 		let retry: number | undefined;
 		let socket: WebSocket | null = null;
 
 		async function connect() {
+			if (!enabledRef.current) {
+				return;
+			}
 			const session = await loadLiveSession(restaurantId ?? "");
 			if (closed || !session.ok) {
 				return;
 			}
 			setAuthorKind(session.authorKind);
+			selfIdRef.current = session.userId;
 			socket = new WebSocket(toWsUrl(session.url));
 			socketRef.current = socket;
 			socket.onopen = () => {
@@ -113,12 +132,23 @@ export function RestoLiveProvider({
 					setAlerts((current) =>
 						current.filter((item) => !payload.ids.includes(item.id)),
 					);
+					return;
+				}
+				if (payload.type === "courier-removed") {
+					setCouriers((current) =>
+						current.filter(
+							(item) => item.courierUserId !== payload.courierUserId,
+						),
+					);
+					if (payload.courierUserId === selfIdRef.current) {
+						onForceClockOut?.();
+					}
 				}
 			};
 			socket.onclose = () => {
 				setConnected(false);
 				socketRef.current = null;
-				if (!closed) {
+				if (!closed && enabledRef.current) {
 					retry = window.setTimeout(() => void connect(), 2000);
 				}
 			};
@@ -133,7 +163,7 @@ export function RestoLiveProvider({
 			socket?.close();
 			socketRef.current = null;
 		};
-	}, [restaurantId]);
+	}, [restaurantId, enabled]);
 
 	const sendChat = useCallback((body: string, courierUserId: string) => {
 		const socket = socketRef.current;
@@ -167,6 +197,24 @@ export function RestoLiveProvider({
 		return true;
 	}, []);
 
+	const punchOut = useCallback(() => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "punch-out" }));
+		return true;
+	}, []);
+
+	const removeCourier = useCallback((courierUserId: string) => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN || !courierUserId) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "remove-courier", courierUserId }));
+		return true;
+	}, []);
+
 	const sendPosition = useCallback((lat: number, lng: number) => {
 		const socket = socketRef.current;
 		if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -188,6 +236,8 @@ export function RestoLiveProvider({
 			sendPosition,
 			sendAlert,
 			archiveAlerts,
+			punchOut,
+			removeCourier,
 		}),
 		[
 			connected,
@@ -200,6 +250,8 @@ export function RestoLiveProvider({
 			sendPosition,
 			sendAlert,
 			archiveAlerts,
+			punchOut,
+			removeCourier,
 		],
 	);
 
