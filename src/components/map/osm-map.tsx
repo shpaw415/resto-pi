@@ -9,9 +9,7 @@ export type MapMarker = {
 };
 
 const OSM_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-const ICON = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png";
-const ICON_2X = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png";
-const SHADOW = "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png";
+const ICON_PATH = "https://unpkg.com/leaflet@1.9.4/dist/images/";
 
 export function OsmMap({
 	center,
@@ -39,10 +37,12 @@ export function OsmMap({
 				return;
 			}
 			const L = leaflet.default;
+			L.Icon.Default.imagePath = ICON_PATH;
+			delete (L.Icon.Default.prototype as { _getIconUrl?: unknown })._getIconUrl;
 			L.Icon.Default.mergeOptions({
-				iconUrl: ICON,
-				iconRetinaUrl: ICON_2X,
-				shadowUrl: SHADOW,
+				iconUrl: `${ICON_PATH}marker-icon.png`,
+				iconRetinaUrl: `${ICON_PATH}marker-icon-2x.png`,
+				shadowUrl: `${ICON_PATH}marker-shadow.png`,
 			});
 			const map = L.map(el.current).setView([center.lat, center.lng], zoom);
 			L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
