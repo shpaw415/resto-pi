@@ -26,13 +26,13 @@ export function StaffCourierChat({
 			setMessages(liveMessages);
 			return;
 		}
-		void loadMessages(restaurantId).then((result) => {
+		void loadMessages(restaurantId ?? "").then((result) => {
 			if (result.ok) {
 				setMessages(result.messages);
 			}
 		});
 		const timer = window.setInterval(() => {
-			void loadMessages(restaurantId).then((result) => {
+			void loadMessages(restaurantId ?? "").then((result) => {
 				if (result.ok) {
 					setMessages(result.messages);
 				}
@@ -47,7 +47,7 @@ export function StaffCourierChat({
 			setDraft("");
 			return;
 		}
-		const result = await sendMessage(draft, restaurantId);
+		const result = await sendMessage(draft, restaurantId ?? "");
 		if (!result.ok) {
 			setError(result.error);
 			return;

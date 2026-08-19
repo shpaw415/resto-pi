@@ -5,13 +5,13 @@ import type { CtxData } from "../../../../action-utils/api-types";
 import { resolveOpsRestaurant } from "../../../../lib/ops/access";
 import { getClientNote, saveClientNote } from "../../../../lib/ops/notes";
 
-export async function GET(phone: string, restaurantId?: string) {
+export async function GET(phone: string, restaurantId: string) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
 		never,
 		CtxData
 	>;
-	const access = await resolveOpsRestaurant(ctx, restaurantId);
+	const access = await resolveOpsRestaurant(ctx, restaurantId || undefined);
 	if (!access.ok) {
 		return { ok: false as const, error: access.error };
 	}
@@ -19,13 +19,13 @@ export async function GET(phone: string, restaurantId?: string) {
 	return { ok: true as const, note };
 }
 
-export async function PUT(phone: string, note: string, restaurantId?: string) {
+export async function PUT(phone: string, note: string, restaurantId: string) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
 		never,
 		CtxData
 	>;
-	const access = await resolveOpsRestaurant(ctx, restaurantId);
+	const access = await resolveOpsRestaurant(ctx, restaurantId || undefined);
 	if (!access.ok) {
 		return { ok: false as const, error: access.error };
 	}

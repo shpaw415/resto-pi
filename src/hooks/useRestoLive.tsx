@@ -51,7 +51,7 @@ export function RestoLiveProvider({
 		let socket: WebSocket | null = null;
 
 		async function connect() {
-			const session = await loadLiveSession(restaurantId);
+			const session = await loadLiveSession(restaurantId ?? "");
 			if (closed || !session.ok) {
 				return;
 			}

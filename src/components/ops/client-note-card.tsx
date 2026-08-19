@@ -25,7 +25,7 @@ export function ClientNoteCard({
 		if (!value.trim()) {
 			return;
 		}
-		const result = await loadNote(value, restaurantId);
+		const result = await loadNote(value, restaurantId ?? "");
 		if (!result.ok || !result.note) {
 			return;
 		}
@@ -47,7 +47,7 @@ export function ClientNoteCard({
 
 	async function save() {
 		setError(null);
-		const result = await saveNote(phone, note, restaurantId);
+		const result = await saveNote(phone, note, restaurantId ?? "");
 		if (!result.ok) {
 			setError(result.error);
 			return;

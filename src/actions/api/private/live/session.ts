@@ -6,13 +6,13 @@ import type { LiveSession } from "../../../../lib/live/protocol";
 import { mintLiveTicket } from "../../../../lib/live/ticket";
 import { resolveOpsRestaurant } from "../../../../lib/ops/access";
 
-export async function GET(restaurantId?: string) {
+export async function GET(restaurantId: string) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
 		never,
 		CtxData
 	>;
-	const access = await resolveOpsRestaurant(ctx, restaurantId);
+	const access = await resolveOpsRestaurant(ctx, restaurantId || undefined);
 	if (!access.ok) {
 		return { ok: false as const, error: access.error };
 	}
