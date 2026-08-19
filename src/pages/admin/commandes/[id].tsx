@@ -9,6 +9,7 @@ import Typography from "@shpaw415/mui-lite/Typography";
 import { navigate } from "frame-master-plugin-apply-react/utils";
 import type { CtxData } from "../../../action-utils/api-types";
 import { AdminPageFrame } from "../../../components/admin/page-frame";
+import { ClientNoteCard } from "../../../components/ops/client-note-card";
 import { loadAdminBootstrap } from "../../../lib/admin/load";
 import { formatCad } from "../../../lib/money";
 import { getOrderById } from "../../../lib/orders/service";
@@ -66,6 +67,14 @@ export default function OrderDetailPage() {
 						{order.customerAddress ? (
 							<Typography variant="body2">{order.customerAddress}</Typography>
 						) : null}
+						{order.customerPhone ? (
+							<ClientNoteCard
+								phone={order.customerPhone}
+								restaurantId={data?.bootstrap.active?.id}
+							/>
+						) : (
+							<ClientNoteCard restaurantId={data?.bootstrap.active?.id} />
+						)}
 						<Stack spacing={1}>
 							{order.items.map((item) => (
 								<Paper key={item.id} variant="outlined" className="p-3">

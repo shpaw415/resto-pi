@@ -115,19 +115,29 @@ export default function LivreurStatutPage() {
 						Le restaurant est notifié tout de suite.
 					</Typography>
 					{notice ? <Alert severity="success">{notice}</Alert> : null}
-					{QUICK_ACTIONS.map((action) => (
-						<Button
-							key={action.kind}
-							variant={action.kind === "help" ? "contained" : "outlined"}
-							color={action.color ?? "primary"}
-							size="large"
-							fullWidth
-							disabled={busy !== null}
-							onClick={() => void notify(action.kind)}
-						>
-							{COURIER_ALERT_LABELS[action.kind]}
-						</Button>
-					))}
+					<div className="grid grid-cols-2 gap-3">
+						{QUICK_ACTIONS.map((action) => (
+							<Button
+								key={action.kind}
+								variant={action.kind === "help" ? "contained" : "outlined"}
+								color={action.color ?? "primary"}
+								size="large"
+								fullWidth
+								disabled={busy !== null}
+								className={action.kind === "help" ? "col-span-2" : undefined}
+								sx={{
+									minHeight: 72,
+									fontSize: "1rem",
+									lineHeight: 1.25,
+									whiteSpace: "normal",
+									px: 1.5,
+								}}
+								onClick={() => void notify(action.kind)}
+							>
+								{COURIER_ALERT_LABELS[action.kind]}
+							</Button>
+						))}
+					</div>
 				</Stack>
 			</Paper>
 		</Stack>

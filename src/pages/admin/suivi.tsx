@@ -12,6 +12,8 @@ import type { CtxData } from "../../action-utils/api-types";
 import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { OsmMap, type MapMarker } from "../../components/map/osm-map";
+import { ClientNoteCard } from "../../components/ops/client-note-card";
+import { StaffCourierChat } from "../../components/ops/staff-courier-chat";
 import { loadSuiviPage } from "../../lib/admin/load";
 import type {
 	CourierAlert,
@@ -107,6 +109,11 @@ export default function SuiviPage() {
 						Carte OSM, rafraîchie toutes les 5 secondes.
 					</Typography>
 					<OsmMap center={center} markers={markers} />
+					<StaffCourierChat
+						restaurantId={initial.bootstrap.active?.id}
+						selfKind="staff"
+					/>
+					<ClientNoteCard restaurantId={initial.bootstrap.active?.id} />
 					<Typography variant="h6" Element="h2">
 						Alertes livreur
 					</Typography>

@@ -15,6 +15,13 @@
       "when": 1787167538528,
       "tag": "0001_cynical_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787169162972,
+      "tag": "0002_lowly_pepper_potts",
+      "breakpoints": true
     }
   ]
 }

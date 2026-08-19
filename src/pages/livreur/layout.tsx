@@ -1,4 +1,5 @@
 import { useAuth } from "@hooks/useAuth";
+import ChatIcon from "@material-design-icons/svg/filled/chat.svg";
 import LocalShippingIcon from "@material-design-icons/svg/filled/local_shipping.svg";
 import MyLocationIcon from "@material-design-icons/svg/filled/my_location.svg";
 import PersonIcon from "@material-design-icons/svg/filled/person.svg";
@@ -16,12 +17,16 @@ import { LivreurTrackingProvider } from "../../hooks/useLivreurTracking";
 const tabs = [
 	{ value: "/livreur", label: "Statut", icon: <MyLocationIcon /> },
 	{ value: "/livreur/courses", label: "Courses", icon: <LocalShippingIcon /> },
+	{ value: "/livreur/messages", label: "Messages", icon: <ChatIcon /> },
 	{ value: "/livreur/compte", label: "Compte", icon: <PersonIcon /> },
 ];
 
 function currentTab(pathname: string) {
 	if (pathname.startsWith("/livreur/courses")) {
 		return "/livreur/courses";
+	}
+	if (pathname.startsWith("/livreur/messages")) {
+		return "/livreur/messages";
 	}
 	if (pathname.startsWith("/livreur/compte")) {
 		return "/livreur/compte";

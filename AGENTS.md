@@ -2,7 +2,7 @@
 
 Self-operated restaurant platform on the cloudflare-nextjs Frame Master template.
 
-**v1:** admin + CMS + order status board + API keys + suivi livreur OSM. Auth is OpenAuthster (`openauthster-shared`). Roles are assigned only in OpenAuthster WebUI: `admin:admin`, `{slug}:admin`, `{slug}:user`, `{slug}:courier`. This app parses roles; it never writes them. Orders arrive via `/api/v1` or POS adapter (Colossal UEAT). UI: `@shpaw415/mui-lite`, French. DB: D1 + Drizzle — edit `src/db/schema.ts` then `bun run db:generate`. Livreur PWA `/livreur` (GPS POST) ; staff `/admin/suivi` (poll 5s + OSM).
+**v1:** admin + CMS + order status board + API keys + suivi livreur OSM. Auth is OpenAuthster (`openauthster-shared`). Roles are assigned only in OpenAuthster WebUI: `admin:admin`, `{slug}:admin`, `{slug}:user`, `{slug}:courier`. This app parses roles; it never writes them. Orders arrive via `/api/v1` or POS adapter (Colossal UEAT). UI: `@shpaw415/mui-lite`, French. DB: D1 + Drizzle — edit `src/db/schema.ts` then `bun run db:generate`. Livreur PWA `/livreur` (GPS POST) ; staff `/admin/suivi` (poll 5s + OSM). Chat staff↔livreur + notes client persistantes (clé = téléphone normalisé, resto-scoped).
 
 ---
 

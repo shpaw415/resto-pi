@@ -264,6 +264,41 @@ export const courierAlerts = sqliteTable("courier_alerts", {
 	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const staffCourierMessages = sqliteTable("staff_courier_messages", {
+	id: text("id").primaryKey(),
+	restaurantId: text("restaurant_id")
+		.notNull()
+		.references(() => restaurants.id, { onDelete: "cascade" }),
+	authorUserId: text("author_user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	authorKind: text("author_kind").notNull(),
+	body: text("body").notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const clientNotes = sqliteTable(
+	"client_notes",
+	{
+		id: text("id").primaryKey(),
+		restaurantId: text("restaurant_id")
+			.notNull()
+			.references(() => restaurants.id, { onDelete: "cascade" }),
+		phone: text("phone").notNull(),
+		note: text("note").notNull().default(""),
+		updatedByUserId: text("updated_by_user_id").references(() => users.id, {
+			onDelete: "set null",
+		}),
+		...timestampColumns,
+	},
+	(table) => ({
+		phoneIdx: uniqueIndex("client_notes_resto_phone_idx").on(
+			table.restaurantId,
+			table.phone,
+		),
+	}),
+);
+
 export const courierPositions = sqliteTable("courier_positions", {
 	id: text("id").primaryKey(),
 	restaurantId: text("restaurant_id")

@@ -7,6 +7,7 @@ import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
 import Typography from "@shpaw415/mui-lite/Typography";
 import type { CtxData } from "../../action-utils/api-types";
+import { ClientNoteCard } from "../../components/ops/client-note-card";
 import { loadLivreurPage } from "../../lib/admin/load";
 import { canEnterCourier } from "../../lib/auth/identity";
 import { formatCad } from "../../lib/money";
@@ -41,6 +42,7 @@ export default function LivreurCoursesPage() {
 	}
 
 	const courses = data.courses ?? [];
+	const restaurantId = data.bootstrap.active?.id;
 
 	return (
 		<Stack spacing={1.5}>
@@ -75,11 +77,18 @@ export default function LivreurCoursesPage() {
 								<Typography variant="body2">{order.customerAddress}</Typography>
 							) : null}
 							{order.customerPhone ? (
-								<a href={`tel:${order.customerPhone}`} className="text-inherit">
-									<Typography variant="body2" color="primary">
-										{order.customerPhone}
-									</Typography>
-								</a>
+								<>
+									<a href={`tel:${order.customerPhone}`} className="text-inherit">
+										<Typography variant="body2" color="primary">
+											{order.customerPhone}
+										</Typography>
+									</a>
+									<ClientNoteCard
+										phone={order.customerPhone}
+										restaurantId={restaurantId}
+										compact
+									/>
+								</>
 							) : null}
 							<Typography variant="caption" color="secondary">
 								{formatCad(order.totalCents)} · {order.items.length} article
