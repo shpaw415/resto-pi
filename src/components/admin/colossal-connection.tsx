@@ -116,7 +116,7 @@ export function ColossalConnectionCard({
 	}
 
 	return (
-		<Paper variant="outlined" className="p-4">
+		<Paper elevation={1} className="p-5">
 			<Stack spacing={2}>
 				<Stack
 					direction="row"

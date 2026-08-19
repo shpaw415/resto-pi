@@ -88,7 +88,7 @@ export function OsmMap({
 	return (
 		<div
 			ref={el}
-			className="h-[28rem] w-full overflow-hidden rounded-lg border theme-border"
+			className="h-[min(52dvh,22rem)] w-full overflow-hidden rounded-lg border theme-border"
 		/>
 	);
 }

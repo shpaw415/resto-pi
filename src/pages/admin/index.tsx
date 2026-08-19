@@ -8,6 +8,7 @@ import Stack from "@shpaw415/mui-lite/Stack";
 import Typography from "@shpaw415/mui-lite/Typography";
 import type { CtxData } from "../../action-utils/api-types";
 import { ColossalConnectionCard } from "../../components/admin/colossal-connection";
+import { AdminPageHeader } from "../../components/admin/page-header";
 import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { loadDashboard } from "../../lib/admin/load";
@@ -36,10 +37,11 @@ export default function AdminHomePage() {
 		<AdminPageFrame bootstrap={bootstrap}>
 			{bootstrap ? (
 				<Stack spacing={3}>
+					<AdminPageHeader
+						title="Tableau de bord"
+						subtitle="Commandes du jour et connexion Colossal de l’établissement actif."
+					/>
 					<RestaurantSwitch bootstrap={bootstrap} />
-					<Typography variant="h5" Element="h1">
-						Tableau de bord
-					</Typography>
 					{data?.counts ? (
 						<div className="grid grid-cols-2 gap-3 md:grid-cols-5">
 							{(
@@ -51,7 +53,7 @@ export default function AdminHomePage() {
 									"termine",
 								] as const
 							).map((status) => (
-								<Paper key={status} className="p-4" variant="outlined">
+								<Paper key={status} className="p-4" elevation={1}>
 									<Typography variant="caption" color="secondary">
 										{STATUS_LABELS[status]}
 									</Typography>
@@ -80,7 +82,7 @@ export default function AdminHomePage() {
 							Dernières commandes
 						</Typography>
 						{(data?.recent ?? []).map((order) => (
-							<Paper key={order.id} variant="outlined" className="p-3">
+							<Paper key={order.id} elevation={1} className="p-3">
 								<Stack
 									direction="row"
 									justifyContent="space-between"

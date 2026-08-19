@@ -52,6 +52,19 @@ export function canManageRestaurants(parsed: ParsedRole | null): boolean {
 	return Boolean(parsed?.isPlatformOwner);
 }
 
+export function canEditRestaurant(
+	parsed: ParsedRole | null,
+	slug: string,
+): boolean {
+	if (!parsed) {
+		return false;
+	}
+	if (parsed.isPlatformOwner) {
+		return true;
+	}
+	return parsed.permission === "admin" && parsed.tenant === slug;
+}
+
 export function canManageApiKeys(parsed: ParsedRole | null): boolean {
 	return canManageCatalog(parsed);
 }

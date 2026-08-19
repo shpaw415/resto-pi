@@ -46,7 +46,7 @@ export default function SuiviPage() {
 		initial?.couriers ?? [],
 	);
 	const [center, setCenter] = useState(
-		initial?.center ?? { lat: 45.5017, lng: -73.5673, name: "Restaurant" },
+		initial?.center ?? { lat: 45.5756, lng: -70.882, name: "Restaurant" },
 	);
 
 	useEffect(() => {
