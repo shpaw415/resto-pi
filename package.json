@@ -41,6 +41,7 @@
 	},
 	"scripts": {
 		"dev": "NODE_ENV=development bun frame-master start",
+		"dev:live": "wrangler dev -c workers/resto-live/wrangler.jsonc --port 8788 --persist-to .wrangler/state",
 		"build": "NODE_ENV=production bun frame-master build",
 		"build:dev": "NODE_ENV=development bun frame-master build",
 		"check": "tsc --noEmit",

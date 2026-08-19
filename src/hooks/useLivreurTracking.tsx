@@ -1,4 +1,5 @@
-import { POST as sendPosition } from "@api/private/livreur/position";
+import { POST as sendPositionHttp } from "@api/private/livreur/position";
+import { useOptionalRestoLive } from "./useRestoLive";
 import {
 	createContext,
 	type ReactNode,
@@ -22,10 +23,24 @@ type LivreurTrackingValue = {
 const LivreurTrackingCtx = createContext<LivreurTrackingValue | null>(null);
 
 export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
+	const live = useOptionalRestoLive();
 	const [tracking, setTracking] = useState(false);
 	const [coords, setCoords] = useState<Coords | null>(null);
 	const [status, setStatus] = useState("GPS arrêté");
 	const [error, setError] = useState<string | null>(null);
+
+	async function publish(next: Coords) {
+		if (live?.sendPosition(next.lat, next.lng)) {
+			setStatus(`Envoyée ${new Date().toLocaleTimeString("fr-CA")}`);
+			return;
+		}
+		const result = await sendPositionHttp(next);
+		if (!result.ok) {
+			setError(result.error);
+			return;
+		}
+		setStatus(`Envoyée ${new Date().toLocaleTimeString("fr-CA")}`);
+	}
 
 	useEffect(() => {
 		if (!tracking) {
@@ -44,15 +59,7 @@ export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
 				};
 				setCoords(next);
 				setError(null);
-				void sendPosition(next).then((result) => {
-					if (!result.ok) {
-						setError(result.error);
-						return;
-					}
-					setStatus(
-						`Envoyée ${new Date().toLocaleTimeString("fr-CA")}`,
-					);
-				});
+				void publish(next);
 			},
 			(geoError) => {
 				setError(geoError.message);
@@ -61,7 +68,7 @@ export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
 		);
 		const ping = window.setInterval(() => {
 			navigator.geolocation.getCurrentPosition((position) => {
-				void sendPosition({
+				void publish({
 					lat: position.coords.latitude,
 					lng: position.coords.longitude,
 				});
@@ -71,7 +78,7 @@ export function LivreurTrackingProvider({ children }: { children: ReactNode }) {
 			navigator.geolocation.clearWatch(watch);
 			window.clearInterval(ping);
 		};
-	}, [tracking]);
+	}, [tracking, live?.connected]);
 
 	const toggle = useCallback(() => {
 		setTracking((current) => {

@@ -106,6 +106,40 @@ export default {
 	},
 	plugins: [
 		{
+			name: "resto-live-dev",
+			version: "1.0.0",
+			serverStart: {
+				async dev_main() {
+					if (process.env.AUTH_SECRET) {
+						await Bun.write(
+							"workers/resto-live/.dev.vars",
+							`AUTH_SECRET=${process.env.AUTH_SECRET}\n`,
+						);
+					}
+					const proc = Bun.spawn({
+						cmd: [
+							"bunx",
+							"wrangler",
+							"dev",
+							"-c",
+							"workers/resto-live/wrangler.jsonc",
+							"--port",
+							"8788",
+							"--persist-to",
+							".wrangler/state",
+						],
+						stdout: "inherit",
+						stderr: "inherit",
+						stdin: "ignore",
+					});
+					const stop = () => proc.kill();
+					process.on("SIGINT", stop);
+					process.on("SIGTERM", stop);
+					process.on("exit", stop);
+				},
+			},
+		},
+		{
 			name: "dev-plugin",
 			version: "1.0.0",
 			fileSystemWatchDir: ["src"],

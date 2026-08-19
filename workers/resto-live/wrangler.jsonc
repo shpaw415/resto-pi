@@ -1,0 +1,28 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "resto-pi-live",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-02-17",
+	"compatibility_flags": ["nodejs_compat"],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "RESTO_LIVE",
+				"class_name": "RestaurantLive"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["RestaurantLive"]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "resto-pi",
+			"database_id": "00000000-0000-0000-0000-000000000001"
+		}
+	]
+}

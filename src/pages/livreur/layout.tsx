@@ -13,6 +13,7 @@ import Typography from "@shpaw415/mui-lite/Typography";
 import { navigate } from "frame-master-plugin-apply-react/utils";
 import { useEffect, useState } from "react";
 import { LivreurTrackingProvider } from "../../hooks/useLivreurTracking";
+import { RestoLiveProvider } from "../../hooks/useRestoLive";
 
 const tabs = [
 	{ value: "/livreur", label: "Statut", icon: <MyLocationIcon /> },
@@ -50,7 +51,8 @@ export default function LivreurLayout({
 		tabs.find((item) => item.value === tab)?.label ?? "Livreur";
 
 	return (
-		<LivreurTrackingProvider>
+		<RestoLiveProvider>
+			<LivreurTrackingProvider>
 			<div className="livreur-shell flex min-h-dvh flex-col">
 				<AppBar color="primary" position="sticky" elevation={0}>
 					<Toolbar sx={{ minHeight: 56 }}>
@@ -101,5 +103,6 @@ export default function LivreurLayout({
 				</Paper>
 			</div>
 		</LivreurTrackingProvider>
+		</RestoLiveProvider>
 	);
 }

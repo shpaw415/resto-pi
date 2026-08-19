@@ -15,7 +15,8 @@
 		"SKIP_DEPENDENCY_INSTALL": "true",
 		"PUBLIC_AUTH_CLIENT_ID": "__resto_pi__",
 		"PUBLIC_AUTH_ISSUER": "https://auth.example.com",
-		"PUBLIC_AUTH_REDIRECT_URI": "http://localhost:3000/callback"
+		"PUBLIC_AUTH_REDIRECT_URI": "http://localhost:3000/callback",
+		"PUBLIC_LIVE_ORIGIN": "http://127.0.0.1:8788"
 	},
 	"kv_namespaces": [
 		{

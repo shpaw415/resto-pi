@@ -5,6 +5,7 @@ import Stack from "@shpaw415/mui-lite/Stack";
 import TextField from "@shpaw415/mui-lite/TextField";
 import Typography from "@shpaw415/mui-lite/Typography";
 import { useEffect, useState } from "react";
+import { useOptionalRestoLive } from "../../hooks/useRestoLive";
 import type { ChatAuthorKind, ChatMessage } from "../../lib/ops/types";
 
 export function StaffCourierChat({
@@ -14,25 +15,38 @@ export function StaffCourierChat({
 	restaurantId?: string;
 	selfKind: ChatAuthorKind;
 }) {
+	const live = useOptionalRestoLive();
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [draft, setDraft] = useState("");
 	const [error, setError] = useState<string | null>(null);
-
-	async function refresh() {
-		const result = await loadMessages(restaurantId);
-		if (result.ok) {
-			setMessages(result.messages);
-		}
-	}
+	const liveMessages = live?.messages;
 
 	useEffect(() => {
-		void refresh();
-		const timer = window.setInterval(() => void refresh(), 5000);
+		if (liveMessages) {
+			setMessages(liveMessages);
+			return;
+		}
+		void loadMessages(restaurantId).then((result) => {
+			if (result.ok) {
+				setMessages(result.messages);
+			}
+		});
+		const timer = window.setInterval(() => {
+			void loadMessages(restaurantId).then((result) => {
+				if (result.ok) {
+					setMessages(result.messages);
+				}
+			});
+		}, 5000);
 		return () => window.clearInterval(timer);
-	}, [restaurantId]);
+	}, [restaurantId, liveMessages]);
 
 	async function submit() {
 		setError(null);
+		if (live?.connected && live.sendChat(draft)) {
+			setDraft("");
+			return;
+		}
 		const result = await sendMessage(draft, restaurantId);
 		if (!result.ok) {
 			setError(result.error);
@@ -46,6 +60,9 @@ export function StaffCourierChat({
 		<Paper elevation={1} className="p-4">
 			<Stack spacing={1.5}>
 				<Typography variant="subtitle1">Messages resto ↔ livreur</Typography>
+				<Typography variant="caption" color="secondary">
+					{live?.connected ? "Temps réel" : "Hors ligne / secours HTTP"}
+				</Typography>
 				<div className="max-h-72 space-y-2 overflow-y-auto">
 					{messages.length === 0 ? (
 						<Typography variant="body2" color="secondary">
