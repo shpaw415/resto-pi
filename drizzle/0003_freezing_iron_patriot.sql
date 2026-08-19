@@ -1,0 +1,1 @@
+ALTER TABLE `staff_courier_messages` ADD `courier_user_id` text NOT NULL REFERENCES users(id);

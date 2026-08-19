@@ -9,16 +9,21 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { LiveCourier, LiveOutbound } from "../lib/live/protocol";
+import type { CourierAlertKind } from "../db/schema";
+import type { LiveAlert, LiveCourier, LiveOutbound } from "../lib/live/protocol";
 import type { ChatAuthorKind, ChatMessage } from "../lib/ops/types";
 
 type RestoLiveValue = {
 	connected: boolean;
 	couriers: LiveCourier[];
 	messages: ChatMessage[];
+	onlineCourierIds: string[];
+	alerts: LiveAlert[];
 	authorKind: ChatAuthorKind;
-	sendChat: (body: string) => boolean;
+	sendChat: (body: string, courierUserId: string) => boolean;
 	sendPosition: (lat: number, lng: number) => boolean;
+	sendAlert: (kind: CourierAlertKind) => boolean;
+	archiveAlerts: () => boolean;
 };
 
 const RestoLiveCtx = createContext<RestoLiveValue | null>(null);
@@ -42,6 +47,8 @@ export function RestoLiveProvider({
 	const [connected, setConnected] = useState(false);
 	const [couriers, setCouriers] = useState<LiveCourier[]>([]);
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
+	const [onlineCourierIds, setOnlineCourierIds] = useState<string[]>([]);
+	const [alerts, setAlerts] = useState<LiveAlert[]>([]);
 	const [authorKind, setAuthorKind] = useState<ChatAuthorKind>("staff");
 	const socketRef = useRef<WebSocket | null>(null);
 
@@ -68,6 +75,12 @@ export function RestoLiveProvider({
 				if (payload.type === "snapshot") {
 					setCouriers(payload.couriers);
 					setMessages(payload.messages);
+					setAlerts(payload.alerts);
+					setOnlineCourierIds(payload.onlineCourierIds);
+					return;
+				}
+				if (payload.type === "presence") {
+					setOnlineCourierIds(payload.onlineCourierIds);
 					return;
 				}
 				if (payload.type === "position") {
@@ -85,6 +98,20 @@ export function RestoLiveProvider({
 						current.some((item) => item.id === payload.message.id)
 							? current
 							: [...current, payload.message],
+					);
+					return;
+				}
+				if (payload.type === "alert") {
+					setAlerts((current) =>
+						current.some((item) => item.id === payload.alert.id)
+							? current
+							: [payload.alert, ...current],
+					);
+					return;
+				}
+				if (payload.type === "alerts-archived") {
+					setAlerts((current) =>
+						current.filter((item) => !payload.ids.includes(item.id)),
 					);
 				}
 			};
@@ -108,12 +135,35 @@ export function RestoLiveProvider({
 		};
 	}, [restaurantId]);
 
-	const sendChat = useCallback((body: string) => {
+	const sendChat = useCallback((body: string, courierUserId: string) => {
 		const socket = socketRef.current;
-		if (!socket || socket.readyState !== WebSocket.OPEN || !body.trim()) {
+		if (
+			!socket ||
+			socket.readyState !== WebSocket.OPEN ||
+			!body.trim() ||
+			!courierUserId
+		) {
 			return false;
 		}
-		socket.send(JSON.stringify({ type: "chat", body }));
+		socket.send(JSON.stringify({ type: "chat", body, courierUserId }));
+		return true;
+	}, []);
+
+	const sendAlert = useCallback((kind: CourierAlertKind) => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "alert", kind }));
+		return true;
+	}, []);
+
+	const archiveAlerts = useCallback(() => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "archive-alerts" }));
 		return true;
 	}, []);
 
@@ -131,11 +181,26 @@ export function RestoLiveProvider({
 			connected,
 			couriers,
 			messages,
+			onlineCourierIds,
+			alerts,
 			authorKind,
 			sendChat,
 			sendPosition,
+			sendAlert,
+			archiveAlerts,
 		}),
-		[connected, couriers, messages, authorKind, sendChat, sendPosition],
+		[
+			connected,
+			couriers,
+			messages,
+			onlineCourierIds,
+			alerts,
+			authorKind,
+			sendChat,
+			sendPosition,
+			sendAlert,
+			archiveAlerts,
+		],
 	);
 
 	return (

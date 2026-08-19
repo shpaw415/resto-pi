@@ -3,7 +3,11 @@ import type { ChatMessage } from "../../../src/lib/ops/types";
 import type { LiveInbound, LiveOutbound, LivePeer } from "../../../src/lib/live/protocol";
 import { parseInbound } from "../../../src/lib/live/protocol";
 import { verifyLiveTicket } from "../../../src/lib/live/ticket";
-import type { LiveCourier } from "../../../src/lib/live/protocol";
+import type { LiveAlert, LiveCourier } from "../../../src/lib/live/protocol";
+import {
+	COURIER_ALERT_KIND_SET,
+	COURIER_ALERT_LABELS,
+} from "../../../src/lib/tracking/labels";
 
 export interface LiveEnv {
 	RESTO_LIVE: DurableObjectNamespace<RestaurantLive>;
@@ -36,6 +40,7 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 				);
 				CREATE TABLE IF NOT EXISTS messages (
 					id TEXT PRIMARY KEY,
+					courier_user_id TEXT NOT NULL DEFAULT '',
 					author_user_id TEXT NOT NULL,
 					author_kind TEXT NOT NULL,
 					author_name TEXT,
@@ -43,6 +48,13 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 					created_at TEXT NOT NULL
 				);
 			`);
+			try {
+				this.ctx.storage.sql.exec(
+					"ALTER TABLE messages ADD COLUMN courier_user_id TEXT NOT NULL DEFAULT ''",
+				);
+			} catch {
+				// already migrated
+			}
 		});
 	}
 
@@ -59,6 +71,7 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		this.ctx.acceptWebSocket(server);
 		server.serializeAttachment(peer);
 		this.ctx.waitUntil(this.pushSnapshot(server));
+		this.broadcastPresence();
 		return new Response(null, { status: 101, webSocket: client });
 	}
 
@@ -84,11 +97,28 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			await this.handlePosition(peer, inbound);
 			return;
 		}
-		await this.handleChat(peer, inbound.body);
+		if (inbound.type === "alert") {
+			if (peer.kind !== "courier") {
+				jsonSend(ws, { type: "error", error: "Alerte réservée au livreur." });
+				return;
+			}
+			await this.handleAlert(peer, inbound.kind);
+			return;
+		}
+		if (inbound.type === "archive-alerts") {
+			if (peer.kind !== "staff") {
+				jsonSend(ws, { type: "error", error: "Archivage réservé au resto." });
+				return;
+			}
+			await this.handleArchive(peer);
+			return;
+		}
+		await this.handleChat(peer, inbound);
 	}
 
 	async webSocketClose(ws: WebSocket, code: number, reason: string) {
 		ws.close(code, reason);
+		this.broadcastPresence();
 	}
 
 	private readPeer(request: Request): LivePeer | null {
@@ -104,10 +134,31 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 	}
 
 	private async pushSnapshot(ws: WebSocket) {
+		const peer = ws.deserializeAttachment() as SocketState | null;
 		jsonSend(ws, {
 			type: "snapshot",
 			couriers: this.listPositions(),
-			messages: await this.listMessages(),
+			messages: await this.listMessages(peer),
+			alerts: await this.listAlerts(peer),
+			onlineCourierIds: this.onlineCourierIds(),
+		});
+	}
+
+	private onlineCourierIds(): string[] {
+		const ids = new Set<string>();
+		for (const socket of this.ctx.getWebSockets()) {
+			const peer = socket.deserializeAttachment() as SocketState | null;
+			if (peer?.kind === "courier") {
+				ids.add(peer.userId);
+			}
+		}
+		return [...ids];
+	}
+
+	private broadcastPresence() {
+		this.broadcast({
+			type: "presence",
+			onlineCourierIds: this.onlineCourierIds(),
 		});
 	}
 
@@ -132,56 +183,67 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			}));
 	}
 
-	private async listMessages(): Promise<ChatMessage[]> {
+	private async listMessages(peer: SocketState | null): Promise<ChatMessage[]> {
 		const local = this.ctx.storage.sql
 			.exec<{
 				id: string;
+				courier_user_id: string;
 				author_user_id: string;
 				author_kind: string;
 				author_name: string | null;
 				body: string;
 				created_at: string;
-			}>("SELECT * FROM messages ORDER BY created_at DESC LIMIT 80")
+			}>("SELECT * FROM messages ORDER BY created_at DESC LIMIT 200")
 			.toArray()
 			.reverse()
 			.map((row) => ({
 				id: row.id,
+				courierUserId: row.courier_user_id,
 				authorUserId: row.author_user_id,
 				authorKind: row.author_kind === "courier" ? "courier" as const : "staff" as const,
 				authorName: row.author_name,
 				body: row.body,
 				createdAt: row.created_at,
-			}));
-		if (local.length > 0) {
-			return local;
+			}))
+			.filter((row) =>
+				peer?.kind === "courier" ? row.courierUserId === peer.userId : Boolean(row.courierUserId),
+			);
+		if (local.length > 0 || !peer) {
+			return local.slice(-80);
 		}
-		const peer = this.ctx.getWebSockets()[0]?.deserializeAttachment() as
-			| SocketState
-			| null;
-		if (!peer) {
-			return [];
-		}
-		const rows = await this.env.DB.prepare(
-			`SELECT m.id, m.author_user_id, m.author_kind, m.body, m.created_at,
-				u.name as author_name, u.email as author_email
-			 FROM staff_courier_messages m
-			 LEFT JOIN users u ON u.id = m.author_user_id
-			 WHERE m.restaurant_id = ?
-			 ORDER BY m.created_at DESC
-			 LIMIT 80`,
-		)
-			.bind(peer.restaurantId)
-			.all<{
-				id: string;
-				author_user_id: string;
-				author_kind: string;
-				body: string;
-				created_at: string;
-				author_name: string | null;
-				author_email: string | null;
-			}>();
+		const sql =
+			peer.kind === "courier"
+				? `SELECT m.id, m.courier_user_id, m.author_user_id, m.author_kind, m.body, m.created_at,
+					u.name as author_name, u.email as author_email
+				 FROM staff_courier_messages m
+				 LEFT JOIN users u ON u.id = m.author_user_id
+				 WHERE m.restaurant_id = ? AND m.courier_user_id = ?
+				 ORDER BY m.created_at DESC
+				 LIMIT 80`
+				: `SELECT m.id, m.courier_user_id, m.author_user_id, m.author_kind, m.body, m.created_at,
+					u.name as author_name, u.email as author_email
+				 FROM staff_courier_messages m
+				 LEFT JOIN users u ON u.id = m.author_user_id
+				 WHERE m.restaurant_id = ?
+				 ORDER BY m.created_at DESC
+				 LIMIT 80`;
+		const query =
+			peer.kind === "courier"
+				? this.env.DB.prepare(sql).bind(peer.restaurantId, peer.userId)
+				: this.env.DB.prepare(sql).bind(peer.restaurantId);
+		const rows = await query.all<{
+			id: string;
+			courier_user_id: string;
+			author_user_id: string;
+			author_kind: string;
+			body: string;
+			created_at: string;
+			author_name: string | null;
+			author_email: string | null;
+		}>();
 		const messages = (rows.results ?? []).reverse().map((row) => ({
 			id: row.id,
+			courierUserId: row.courier_user_id,
 			authorUserId: row.author_user_id,
 			authorKind: row.author_kind === "courier" ? "courier" as const : "staff" as const,
 			authorName: row.author_name ?? row.author_email,
@@ -191,9 +253,10 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		for (const message of messages) {
 			this.ctx.storage.sql.exec(
 				`INSERT OR IGNORE INTO messages
-				 (id, author_user_id, author_kind, author_name, body, created_at)
-				 VALUES (?, ?, ?, ?, ?, ?)`,
+				 (id, courier_user_id, author_user_id, author_kind, author_name, body, created_at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 				message.id,
+				message.courierUserId,
 				message.authorUserId,
 				message.authorKind,
 				message.authorName,
@@ -258,18 +321,24 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		});
 	}
 
-	private async handleChat(peer: LivePeer, rawBody: string) {
-		const body = rawBody.trim();
-		if (!body || body.length > 1000) {
+	private async handleChat(
+		peer: LivePeer,
+		inbound: Extract<LiveInbound, { type: "chat" }>,
+	) {
+		const body = inbound.body.trim();
+		const courierUserId =
+			peer.kind === "courier" ? peer.userId : inbound.courierUserId;
+		if (!body || body.length > 1000 || !courierUserId) {
 			return;
 		}
 		const id = newId("msg");
 		const createdAt = new Date().toISOString();
 		this.ctx.storage.sql.exec(
 			`INSERT INTO messages
-			 (id, author_user_id, author_kind, author_name, body, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
+			 (id, courier_user_id, author_user_id, author_kind, author_name, body, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 			id,
+			courierUserId,
 			peer.userId,
 			peer.kind,
 			peer.name,
@@ -278,15 +347,24 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		);
 		await this.env.DB.prepare(
 			`INSERT INTO staff_courier_messages
-			 (id, restaurant_id, author_user_id, author_kind, body, created_at)
-			 VALUES (?, ?, ?, ?, ?, ?)`,
+			 (id, restaurant_id, courier_user_id, author_user_id, author_kind, body, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
 		)
-			.bind(id, peer.restaurantId, peer.userId, peer.kind, body, createdAt)
+			.bind(
+				id,
+				peer.restaurantId,
+				courierUserId,
+				peer.userId,
+				peer.kind,
+				body,
+				createdAt,
+			)
 			.run();
-		this.broadcast({
+		this.sendToThread(courierUserId, {
 			type: "chat",
 			message: {
 				id,
+				courierUserId,
 				authorUserId: peer.userId,
 				authorKind: peer.kind,
 				authorName: peer.name,
@@ -294,6 +372,107 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 				createdAt,
 			},
 		});
+	}
+
+	private sendToThread(courierUserId: string, payload: LiveOutbound) {
+		const encoded = JSON.stringify(payload);
+		for (const socket of this.ctx.getWebSockets()) {
+			const peer = socket.deserializeAttachment() as SocketState | null;
+			if (!peer) {
+				continue;
+			}
+			if (peer.kind === "staff" || peer.userId === courierUserId) {
+				socket.send(encoded);
+			}
+		}
+	}
+
+	private async listAlerts(peer: SocketState | null): Promise<LiveAlert[]> {
+		if (!peer) {
+			return [];
+		}
+		const rows = await this.env.DB.prepare(
+			`SELECT a.id, a.kind, a.courier_user_id, a.created_at,
+				u.name as courier_name, u.email as courier_email
+			 FROM courier_alerts a
+			 LEFT JOIN users u ON u.id = a.courier_user_id
+			 WHERE a.restaurant_id = ? AND a.archived_at IS NULL
+			 ORDER BY a.created_at DESC
+			 LIMIT 20`,
+		)
+			.bind(peer.restaurantId)
+			.all<{
+				id: string;
+				kind: string;
+				courier_user_id: string;
+				created_at: string;
+				courier_name: string | null;
+				courier_email: string | null;
+			}>();
+		return (rows.results ?? []).flatMap((row) => {
+			if (!COURIER_ALERT_KIND_SET.has(row.kind)) {
+				return [];
+			}
+			const kind = row.kind as keyof typeof COURIER_ALERT_LABELS;
+			return [
+				{
+					id: row.id,
+					kind,
+					label: COURIER_ALERT_LABELS[kind],
+					courierUserId: row.courier_user_id,
+					courierName: row.courier_name ?? row.courier_email,
+					createdAt: row.created_at,
+				},
+			];
+		});
+	}
+
+	private async handleAlert(peer: LivePeer, kind: string) {
+		if (!COURIER_ALERT_KIND_SET.has(kind)) {
+			return;
+		}
+		const typed = kind as keyof typeof COURIER_ALERT_LABELS;
+		const id = newId("alt");
+		const createdAt = new Date().toISOString();
+		await this.env.DB.prepare(
+			`INSERT INTO courier_alerts
+			 (id, restaurant_id, courier_user_id, kind, created_at)
+			 VALUES (?, ?, ?, ?, ?)`,
+		)
+			.bind(id, peer.restaurantId, peer.userId, typed, createdAt)
+			.run();
+		this.broadcast({
+			type: "alert",
+			alert: {
+				id,
+				kind: typed,
+				label: COURIER_ALERT_LABELS[typed],
+				courierUserId: peer.userId,
+				courierName: peer.name,
+				createdAt,
+			},
+		});
+	}
+
+	private async handleArchive(peer: LivePeer) {
+		const rows = await this.env.DB.prepare(
+			`SELECT id FROM courier_alerts
+			 WHERE restaurant_id = ? AND archived_at IS NULL`,
+		)
+			.bind(peer.restaurantId)
+			.all<{ id: string }>();
+		const ids = (rows.results ?? []).map((row) => row.id);
+		if (ids.length === 0) {
+			this.broadcast({ type: "alerts-archived", ids: [] });
+			return;
+		}
+		await this.env.DB.prepare(
+			`UPDATE courier_alerts SET archived_at = ?
+			 WHERE restaurant_id = ? AND archived_at IS NULL`,
+		)
+			.bind(new Date().toISOString(), peer.restaurantId)
+			.run();
+		this.broadcast({ type: "alerts-archived", ids });
 	}
 
 	private broadcast(payload: LiveOutbound) {

@@ -1,10 +1,16 @@
 "use dynamic";
 
-import { GET as loadTracking } from "@api/private/admin/tracking";
+import { POST as archiveAlertsHttp } from "@api/private/admin/alerts";
 import { RestoLiveProvider, useRestoLive } from "../../hooks/useRestoLive";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
+import Button from "@shpaw415/mui-lite/Button";
 import Chip from "@shpaw415/mui-lite/Chip";
+import Dialog, {
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+} from "@shpaw415/mui-lite/Dialog";
 import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
 import Typography from "@shpaw415/mui-lite/Typography";
@@ -16,10 +22,7 @@ import { OsmMap, type MapMarker } from "../../components/map/osm-map";
 import { ClientNoteCard } from "../../components/ops/client-note-card";
 import { StaffCourierChat } from "../../components/ops/staff-courier-chat";
 import { loadSuiviPage } from "../../lib/admin/load";
-import type {
-	CourierAlert,
-	CourierLivePosition,
-} from "../../lib/tracking/service";
+import type { CourierLivePosition } from "../../lib/tracking/service";
 
 export const ssr_configs = createPageConfig({
 	callback() {
@@ -33,13 +36,6 @@ export const loader_suivi = createLoader({
 		return loadSuiviPage(ctx as unknown as EventContext<Env, never, CtxData>);
 	},
 });
-
-function samePoint(
-	a: { lat: number; lng: number },
-	b: { lat: number; lng: number },
-) {
-	return Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lng - b.lng) < 1e-6;
-}
 
 function ageLabel(iso: string): string {
 	const delta = Date.now() - new Date(iso).getTime();
@@ -66,53 +62,45 @@ export default function SuiviPage() {
 function SuiviBody() {
 	const initial = useLoader(loader_suivi);
 	const live = useRestoLive();
-	const [couriers, setCouriers] = useState<CourierLivePosition[]>(
-		live.couriers.length > 0 ? live.couriers : (initial?.couriers ?? []),
-	);
-	const [alerts, setAlerts] = useState<CourierAlert[]>(initial?.alerts ?? []);
-	const [center, setCenter] = useState(
-		initial?.center ?? { lat: 45.5756, lng: -70.882, name: "Restaurant" },
-	);
+	const [alerts, setAlerts] = useState(initial?.alerts ?? []);
+	const [confirmArchive, setConfirmArchive] = useState(false);
+	const [archiving, setArchiving] = useState(false);
+	const couriers: CourierLivePosition[] =
+		live.couriers.length > 0 ? live.couriers : (initial?.couriers ?? []);
+	const center = initial?.center ?? {
+		lat: 45.5756,
+		lng: -70.882,
+		name: "Restaurant",
+	};
 
 	useEffect(() => {
 		if (live.connected) {
-			setCouriers(live.couriers);
+			setAlerts(live.alerts);
+		} else if (initial?.alerts) {
+			setAlerts(initial.alerts);
 		}
-	}, [live.connected, live.couriers]);
+	}, [live.connected, live.alerts, initial?.alerts]);
 
-	useEffect(() => {
-		if (!live.connected) {
-			setCouriers(initial?.couriers ?? []);
-		}
-		setAlerts(initial?.alerts ?? []);
-		if (initial?.center) {
-			setCenter(initial.center);
-		}
-	}, [initial?.couriers, initial?.alerts, initial?.center, live.connected]);
-
-	useEffect(() => {
-		const restaurantId = initial?.bootstrap.active?.id;
-		if (!restaurantId) {
+	async function archiveAlerts() {
+		setArchiving(true);
+		if (live.archiveAlerts()) {
+			setAlerts([]);
+			setConfirmArchive(false);
+			setArchiving(false);
 			return;
 		}
-		const timer = window.setInterval(() => {
-			void loadTracking(restaurantId).then((result) => {
-				if (!result || !("ok" in result) || !result.ok) {
-					return;
-				}
-				if (!live.connected) {
-					setCouriers(result.couriers);
-				}
-				setCenter((current) =>
-					samePoint(current, result.center) && current.name === result.center.name
-						? current
-						: result.center,
-				);
-				setAlerts(result.alerts);
-			});
-		}, 5000);
-		return () => window.clearInterval(timer);
-	}, [initial?.bootstrap.active?.id, live.connected]);
+		const restaurantId = initial?.bootstrap.active?.id;
+		if (!restaurantId) {
+			setArchiving(false);
+			return;
+		}
+		const result = await archiveAlertsHttp(restaurantId);
+		setArchiving(false);
+		if (result.ok) {
+			setAlerts([]);
+			setConfirmArchive(false);
+		}
+	}
 
 	const markers: MapMarker[] = [
 		{
@@ -140,10 +128,8 @@ function SuiviBody() {
 						Livreurs en direct
 					</Typography>
 					<Typography variant="body2" color="secondary">
-						Carte OSM
-						{live.connected
-							? " — positions en direct (WebSocket)."
-							: " — secours HTTP 5s."}
+						Carte OSM — positions via WebSocket
+						{live.connected ? "." : " (connexion…)"}
 					</Typography>
 					<OsmMap
 						center={center}
@@ -155,9 +141,22 @@ function SuiviBody() {
 						selfKind="staff"
 					/>
 					<ClientNoteCard restaurantId={initial.bootstrap.active?.id} />
-					<Typography variant="h6" Element="h2">
-						Alertes livreur
-					</Typography>
+					<Stack
+						direction="row"
+						justifyContent="space-between"
+						alignItems="center"
+					>
+						<Typography variant="h6" Element="h2">
+							Alertes livreur
+						</Typography>
+						<Button
+							variant="outlined"
+							disabled={alerts.length === 0}
+							onClick={() => setConfirmArchive(true)}
+						>
+							Archiver alertes
+						</Button>
+					</Stack>
 					{alerts.length === 0 ? (
 						<Typography variant="body2" color="secondary">
 							Aucune alerte récente.
@@ -225,6 +224,29 @@ function SuiviBody() {
 					</Stack>
 				</Stack>
 			) : null}
+			<Dialog
+				open={confirmArchive}
+				onClose={() => setConfirmArchive(false)}
+			>
+				<DialogTitle>Archiver les alertes ?</DialogTitle>
+				<DialogContent>
+					<Typography>
+						Les alertes visibles seront retirées du suivi. Cette action ne
+						supprime pas l’historique.
+					</Typography>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setConfirmArchive(false)}>Annuler</Button>
+					<Button
+						variant="contained"
+						color="primary"
+						disabled={archiving}
+						onClick={() => void archiveAlerts()}
+					>
+						Archiver
+					</Button>
+				</DialogActions>
+			</Dialog>
 		</AdminPageFrame>
 	);
 }

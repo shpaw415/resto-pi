@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { CtxData } from "../../action-utils/api-types";
 import { getDb, newId } from "../../db/client";
 import {
@@ -9,16 +9,9 @@ import {
 	users,
 } from "../../db/schema";
 import { geocodeAddress, withQuebecHint } from "../geo/nominatim";
+import { COURIER_ALERT_LABELS } from "./labels";
 
-export const COURIER_ALERT_LABELS: Record<CourierAlertKind, string> = {
-	traffic: "Bloqué dans le trafic",
-	nobody_home: "Personne à la maison",
-	no_answer: "Client ne répond pas",
-	wrong_address: "Adresse introuvable",
-	arrived: "Arrivé chez le client",
-	returning: "Retour au restaurant",
-	help: "Besoin d’aide",
-};
+export { COURIER_ALERT_LABELS };
 
 export type CourierAlert = {
 	id: string;
@@ -122,6 +115,37 @@ export async function createCourierAlert(
 	return { ok: true as const, id, createdAt };
 }
 
+export async function archiveCourierAlerts(
+	ctx: EventContext<Env, never, CtxData>,
+	restaurantId: string,
+) {
+	const db = getDb(ctx);
+	const now = new Date().toISOString();
+	const active = await db
+		.select({ id: courierAlerts.id })
+		.from(courierAlerts)
+		.where(
+			and(
+				eq(courierAlerts.restaurantId, restaurantId),
+				isNull(courierAlerts.archivedAt),
+			),
+		)
+		.all();
+	if (active.length === 0) {
+		return { ok: true as const, ids: [] as string[] };
+	}
+	await db
+		.update(courierAlerts)
+		.set({ archivedAt: now })
+		.where(
+			and(
+				eq(courierAlerts.restaurantId, restaurantId),
+				isNull(courierAlerts.archivedAt),
+			),
+		);
+	return { ok: true as const, ids: active.map((row) => row.id) };
+}
+
 export async function listRecentCourierAlerts(
 	ctx: EventContext<Env, never, CtxData>,
 	restaurantId: string,
@@ -131,7 +155,12 @@ export async function listRecentCourierAlerts(
 	const rows = await db
 		.select()
 		.from(courierAlerts)
-		.where(eq(courierAlerts.restaurantId, restaurantId))
+		.where(
+			and(
+				eq(courierAlerts.restaurantId, restaurantId),
+				isNull(courierAlerts.archivedAt),
+			),
+		)
 		.orderBy(desc(courierAlerts.createdAt))
 		.all();
 	const people = await db.select().from(users).all();

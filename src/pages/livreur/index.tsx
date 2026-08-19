@@ -1,6 +1,7 @@
 "use dynamic";
 
-import { POST as sendAlert } from "@api/private/livreur/alert";
+import { POST as sendAlertHttp } from "@api/private/livreur/alert";
+import { useOptionalRestoLive } from "../../hooks/useRestoLive";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
 import Alert from "@shpaw415/mui-lite/Alert";
@@ -47,6 +48,7 @@ const QUICK_ACTIONS: Array<{
 export default function LivreurStatutPage() {
 	const data = useLoader(loader_livreur);
 	const tracking = useLivreurTracking();
+	const live = useOptionalRestoLive();
 	const allowed = data ? canEnterCourier(data.bootstrap.identity) : false;
 	const [notice, setNotice] = useState<string | null>(null);
 	const [busy, setBusy] = useState<CourierAlertKind | null>(null);
@@ -54,7 +56,12 @@ export default function LivreurStatutPage() {
 	async function notify(kind: CourierAlertKind) {
 		setBusy(kind);
 		setNotice(null);
-		const result = await sendAlert(kind);
+		if (live?.sendAlert(kind)) {
+			setBusy(null);
+			setNotice(`Envoyé : ${COURIER_ALERT_LABELS[kind]}`);
+			return;
+		}
+		const result = await sendAlertHttp(kind);
 		setBusy(null);
 		if (!result.ok) {
 			setNotice(result.error);

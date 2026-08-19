@@ -262,6 +262,7 @@ export const courierAlerts = sqliteTable("courier_alerts", {
 		.references(() => users.id, { onDelete: "cascade" }),
 	kind: text("kind", { enum: courierAlertKinds }).notNull(),
 	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+	archivedAt: text("archived_at"),
 });
 
 export const staffCourierMessages = sqliteTable("staff_courier_messages", {
@@ -269,6 +270,9 @@ export const staffCourierMessages = sqliteTable("staff_courier_messages", {
 	restaurantId: text("restaurant_id")
 		.notNull()
 		.references(() => restaurants.id, { onDelete: "cascade" }),
+	courierUserId: text("courier_user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
 	authorUserId: text("author_user_id")
 		.notNull()
 		.references(() => users.id, { onDelete: "cascade" }),

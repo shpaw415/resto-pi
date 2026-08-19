@@ -3,9 +3,13 @@
 import { getContext } from "@next/action/context";
 import type { CtxData } from "../../../../action-utils/api-types";
 import { resolveOpsRestaurant } from "../../../../lib/ops/access";
-import { listMessages, postMessage } from "../../../../lib/ops/messages";
+import {
+	listMessages,
+	listRestaurantCouriers,
+	postMessage,
+} from "../../../../lib/ops/messages";
 
-export async function GET(restaurantId: string) {
+export async function GET(restaurantId: string, courierUserId: string) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
 		never,
@@ -15,13 +19,24 @@ export async function GET(restaurantId: string) {
 	if (!access.ok) {
 		return { ok: false as const, error: access.error };
 	}
+	const threadId =
+		access.authorKind === "courier"
+			? access.identity.id!
+			: courierUserId;
 	return {
 		ok: true as const,
-		messages: await listMessages(ctx, access.restaurantId),
+		selfId: access.identity.id,
+		authorKind: access.authorKind,
+		couriers: await listRestaurantCouriers(ctx, access.restaurantId),
+		messages: await listMessages(ctx, access.restaurantId, threadId),
 	};
 }
 
-export async function POST(body: string, restaurantId: string) {
+export async function POST(
+	body: string,
+	restaurantId: string,
+	courierUserId: string,
+) {
 	const ctx = getContext(arguments) as unknown as EventContext<
 		Env,
 		never,
@@ -31,8 +46,13 @@ export async function POST(body: string, restaurantId: string) {
 	if (!access.ok) {
 		return { ok: false as const, error: access.error };
 	}
+	const threadId =
+		access.authorKind === "courier"
+			? access.identity.id!
+			: courierUserId;
 	const result = await postMessage(ctx, {
 		restaurantId: access.restaurantId,
+		courierUserId: threadId,
 		authorUserId: access.identity.id!,
 		authorKind: access.authorKind,
 		body,
@@ -42,6 +62,6 @@ export async function POST(body: string, restaurantId: string) {
 	}
 	return {
 		ok: true as const,
-		messages: await listMessages(ctx, access.restaurantId),
+		messages: await listMessages(ctx, access.restaurantId, threadId),
 	};
 }

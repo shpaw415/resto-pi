@@ -1,4 +1,14 @@
+import type { CourierAlertKind } from "../../db/schema";
 import type { ChatAuthorKind, ChatMessage } from "../ops/types";
+
+export type LiveAlert = {
+	id: string;
+	kind: CourierAlertKind;
+	label: string;
+	courierUserId: string;
+	courierName: string | null;
+	createdAt: string;
+};
 
 export type LiveCourier = {
 	courierUserId: string;
@@ -18,13 +28,24 @@ export type LivePeer = {
 
 export type LiveInbound =
 	| { type: "position"; lat: number; lng: number }
-	| { type: "chat"; body: string }
+	| { type: "chat"; body: string; courierUserId: string }
+	| { type: "alert"; kind: CourierAlertKind }
+	| { type: "archive-alerts" }
 	| { type: "ping" };
 
 export type LiveOutbound =
-	| { type: "snapshot"; couriers: LiveCourier[]; messages: ChatMessage[] }
+	| {
+			type: "snapshot";
+			couriers: LiveCourier[];
+			messages: ChatMessage[];
+			alerts: LiveAlert[];
+			onlineCourierIds: string[];
+	  }
 	| { type: "position"; courier: LiveCourier }
 	| { type: "chat"; message: ChatMessage }
+	| { type: "alert"; alert: LiveAlert }
+	| { type: "alerts-archived"; ids: string[] }
+	| { type: "presence"; onlineCourierIds: string[] }
 	| { type: "error"; error: string }
 	| { type: "pong" };
 
@@ -43,10 +64,17 @@ export function parseInbound(raw: string): LiveInbound | null {
 		if (!data || typeof data !== "object" || !("type" in data)) {
 			return null;
 		}
-		if (data.type === "ping") {
+		if (data.type === "ping" || data.type === "archive-alerts") {
 			return data;
 		}
-		if (data.type === "chat" && typeof data.body === "string") {
+		if (data.type === "alert" && typeof data.kind === "string") {
+			return data;
+		}
+		if (
+			data.type === "chat" &&
+			typeof data.body === "string" &&
+			typeof data.courierUserId === "string"
+		) {
 			return data;
 		}
 		if (

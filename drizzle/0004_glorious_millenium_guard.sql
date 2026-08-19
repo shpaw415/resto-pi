@@ -1,0 +1,1 @@
+ALTER TABLE `courier_alerts` ADD `archived_at` text;
