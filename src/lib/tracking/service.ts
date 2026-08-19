@@ -1,8 +1,33 @@
 import { desc, eq } from "drizzle-orm";
 import type { CtxData } from "../../action-utils/api-types";
 import { getDb, newId } from "../../db/client";
-import { courierPositions, restaurants, users } from "../../db/schema";
+import {
+	type CourierAlertKind,
+	courierAlerts,
+	courierPositions,
+	restaurants,
+	users,
+} from "../../db/schema";
 import { geocodeAddress, withQuebecHint } from "../geo/nominatim";
+
+export const COURIER_ALERT_LABELS: Record<CourierAlertKind, string> = {
+	traffic: "Bloqué dans le trafic",
+	nobody_home: "Personne à la maison",
+	no_answer: "Client ne répond pas",
+	wrong_address: "Adresse introuvable",
+	arrived: "Arrivé chez le client",
+	returning: "Retour au restaurant",
+	help: "Besoin d’aide",
+};
+
+export type CourierAlert = {
+	id: string;
+	kind: CourierAlertKind;
+	label: string;
+	courierUserId: string;
+	courierName: string | null;
+	createdAt: string;
+};
 
 export type CourierLivePosition = {
 	courierUserId: string;
@@ -74,6 +99,53 @@ export async function listLatestCourierPositions(
 		});
 	}
 	return [...byUser.values()];
+}
+
+export async function createCourierAlert(
+	ctx: EventContext<Env, never, CtxData>,
+	input: {
+		restaurantId: string;
+		courierUserId: string;
+		kind: CourierAlertKind;
+	},
+) {
+	const db = getDb(ctx);
+	const id = newId("alt");
+	const createdAt = new Date().toISOString();
+	await db.insert(courierAlerts).values({
+		id,
+		restaurantId: input.restaurantId,
+		courierUserId: input.courierUserId,
+		kind: input.kind,
+		createdAt,
+	});
+	return { ok: true as const, id, createdAt };
+}
+
+export async function listRecentCourierAlerts(
+	ctx: EventContext<Env, never, CtxData>,
+	restaurantId: string,
+	limit = 20,
+): Promise<CourierAlert[]> {
+	const db = getDb(ctx);
+	const rows = await db
+		.select()
+		.from(courierAlerts)
+		.where(eq(courierAlerts.restaurantId, restaurantId))
+		.orderBy(desc(courierAlerts.createdAt))
+		.all();
+	const people = await db.select().from(users).all();
+	return rows.slice(0, limit).map((row) => {
+		const person = people.find((user) => user.id === row.courierUserId);
+		return {
+			id: row.id,
+			kind: row.kind,
+			label: COURIER_ALERT_LABELS[row.kind],
+			courierUserId: row.courierUserId,
+			courierName: person?.name ?? person?.email ?? null,
+			createdAt: row.createdAt,
+		};
+	});
 }
 
 export async function getRestaurantMapCenter(

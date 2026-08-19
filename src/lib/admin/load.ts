@@ -14,6 +14,7 @@ import { connectionPublicView, getPosConnection } from "../pos/registry";
 import {
 	getRestaurantMapCenter,
 	listLatestCourierPositions,
+	listRecentCourierAlerts,
 } from "../tracking/service";
 
 export type AdminBootstrap = {
@@ -152,14 +153,16 @@ export async function loadSuiviPage(ctx: EventContext<Env, never, CtxData>) {
 		return {
 			bootstrap,
 			couriers: [],
+			alerts: [],
 			center: { lat: 45.5756, lng: -70.882, name: "Lac-Mégantic" },
 		};
 	}
-	const [couriers, center] = await Promise.all([
+	const [couriers, center, alerts] = await Promise.all([
 		listLatestCourierPositions(ctx, bootstrap.active.id),
 		getRestaurantMapCenter(ctx, bootstrap.active.id),
+		listRecentCourierAlerts(ctx, bootstrap.active.id),
 	]);
-	return { bootstrap, couriers, center };
+	return { bootstrap, couriers, center, alerts };
 }
 
 export async function loadLivreurPage(ctx: EventContext<Env, never, CtxData>) {

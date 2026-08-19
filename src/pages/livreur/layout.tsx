@@ -14,7 +14,7 @@ import { useEffect, useState } from "react";
 import { LivreurTrackingProvider } from "../../hooks/useLivreurTracking";
 
 const tabs = [
-	{ value: "/livreur", label: "Carte", icon: <MyLocationIcon /> },
+	{ value: "/livreur", label: "Statut", icon: <MyLocationIcon /> },
 	{ value: "/livreur/courses", label: "Courses", icon: <LocalShippingIcon /> },
 	{ value: "/livreur/compte", label: "Compte", icon: <PersonIcon /> },
 ];

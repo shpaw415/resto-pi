@@ -7,6 +7,7 @@ import { canTrackCouriers } from "../../../../lib/auth/roles";
 import {
 	getRestaurantMapCenter,
 	listLatestCourierPositions,
+	listRecentCourierAlerts,
 } from "../../../../lib/tracking/service";
 
 export async function GET(restaurantId: string) {
@@ -22,9 +23,10 @@ export async function GET(restaurantId: string) {
 	if (!canTrackCouriers(access.parsed)) {
 		return { ok: false as const, error: "Accès refusé." };
 	}
-	const [couriers, center] = await Promise.all([
+	const [couriers, center, alerts] = await Promise.all([
 		listLatestCourierPositions(ctx, restaurantId),
 		getRestaurantMapCenter(ctx, restaurantId),
+		listRecentCourierAlerts(ctx, restaurantId),
 	]);
-	return { ok: true as const, couriers, center };
+	return { ok: true as const, couriers, center, alerts };
 }

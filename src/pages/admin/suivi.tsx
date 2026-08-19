@@ -13,7 +13,10 @@ import { AdminPageFrame } from "../../components/admin/page-frame";
 import { RestaurantSwitch } from "../../components/admin/restaurant-switch";
 import { OsmMap, type MapMarker } from "../../components/map/osm-map";
 import { loadSuiviPage } from "../../lib/admin/load";
-import type { CourierLivePosition } from "../../lib/tracking/service";
+import type {
+	CourierAlert,
+	CourierLivePosition,
+} from "../../lib/tracking/service";
 
 export const ssr_configs = createPageConfig({
 	callback() {
@@ -45,16 +48,18 @@ export default function SuiviPage() {
 	const [couriers, setCouriers] = useState<CourierLivePosition[]>(
 		initial?.couriers ?? [],
 	);
+	const [alerts, setAlerts] = useState<CourierAlert[]>(initial?.alerts ?? []);
 	const [center, setCenter] = useState(
 		initial?.center ?? { lat: 45.5756, lng: -70.882, name: "Restaurant" },
 	);
 
 	useEffect(() => {
 		setCouriers(initial?.couriers ?? []);
+		setAlerts(initial?.alerts ?? []);
 		if (initial?.center) {
 			setCenter(initial.center);
 		}
-	}, [initial?.couriers, initial?.center]);
+	}, [initial?.couriers, initial?.alerts, initial?.center]);
 
 	useEffect(() => {
 		const restaurantId = initial?.bootstrap.active?.id;
@@ -66,6 +71,7 @@ export default function SuiviPage() {
 				if (result && "ok" in result && result.ok) {
 					setCouriers(result.couriers);
 					setCenter(result.center);
+					setAlerts(result.alerts);
 				}
 			});
 		}, 5000);
@@ -101,6 +107,40 @@ export default function SuiviPage() {
 						Carte OSM, rafraîchie toutes les 5 secondes.
 					</Typography>
 					<OsmMap center={center} markers={markers} />
+					<Typography variant="h6" Element="h2">
+						Alertes livreur
+					</Typography>
+					{alerts.length === 0 ? (
+						<Typography variant="body2" color="secondary">
+							Aucune alerte récente.
+						</Typography>
+					) : (
+						alerts.map((alert) => (
+							<Paper key={alert.id} elevation={1} className="p-3">
+								<Stack
+									direction="row"
+									justifyContent="space-between"
+									alignItems="center"
+									spacing={1}
+								>
+									<div>
+										<Typography variant="subtitle2">{alert.label}</Typography>
+										<Typography variant="caption" color="secondary">
+											{alert.courierName || "Livreur"}
+										</Typography>
+									</div>
+									<Chip
+										size="small"
+										color={alert.kind === "help" ? "error" : "secondary"}
+										label={ageLabel(alert.createdAt)}
+									/>
+								</Stack>
+							</Paper>
+						))
+					)}
+					<Typography variant="h6" Element="h2">
+						Positions
+					</Typography>
 					<Stack spacing={1}>
 						{couriers.length === 0 ? (
 							<Paper variant="outlined" className="p-4">

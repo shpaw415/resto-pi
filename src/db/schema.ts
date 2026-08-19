@@ -34,6 +34,15 @@ export const apiKeyScopeValues = [
 	"tracking:read",
 ] as const;
 export const rolePermissions = ["admin", "user", "courier"] as const;
+export const courierAlertKinds = [
+	"traffic",
+	"nobody_home",
+	"no_answer",
+	"wrong_address",
+	"arrived",
+	"returning",
+	"help",
+] as const;
 
 export type OrderType = (typeof orderTypes)[number];
 export type OrderSource = (typeof orderSources)[number];
@@ -42,6 +51,7 @@ export type KitchenStatus = (typeof kitchenStatuses)[number];
 export type PosAdapterId = (typeof posAdapters)[number];
 export type ApiKeyScope = (typeof apiKeyScopeValues)[number];
 export type RolePermission = (typeof rolePermissions)[number];
+export type CourierAlertKind = (typeof courierAlertKinds)[number];
 
 const timestampColumns = {
 	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -240,6 +250,18 @@ export const deliveries = sqliteTable("deliveries", {
 	}),
 	status: text("status").notNull().default("pending"),
 	...timestampColumns,
+});
+
+export const courierAlerts = sqliteTable("courier_alerts", {
+	id: text("id").primaryKey(),
+	restaurantId: text("restaurant_id")
+		.notNull()
+		.references(() => restaurants.id, { onDelete: "cascade" }),
+	courierUserId: text("courier_user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
+	kind: text("kind", { enum: courierAlertKinds }).notNull(),
+	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const courierPositions = sqliteTable("courier_positions", {
