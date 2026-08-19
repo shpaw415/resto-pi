@@ -60,6 +60,8 @@ export default function SuiviPage() {
 		id: string;
 		lat: number;
 		lng: number;
+		at?: number;
+		zoom?: number;
 	} | null>(null);
 	const couriers: CourierLivePosition[] =
 		live.couriers.length > 0 ? live.couriers : (initial?.couriers ?? []);
@@ -133,6 +135,20 @@ export default function SuiviPage() {
 						viewKey={initial.bootstrap.active?.id}
 						focus={focus}
 					/>
+					<Button
+						variant="outlined"
+						onClick={() =>
+							setFocus({
+								id: "resto",
+								lat: center.lat,
+								lng: center.lng,
+								at: Date.now(),
+								zoom: 13,
+							})
+						}
+					>
+						Centrer sur le resto
+					</Button>
 					<Typography variant="h6" Element="h2">
 						Livreurs
 					</Typography>
@@ -166,6 +182,7 @@ export default function SuiviPage() {
 													id: courier.courierUserId,
 													lat: courier.lat,
 													lng: courier.lng,
+													at: Date.now(),
 												})
 											}
 										>

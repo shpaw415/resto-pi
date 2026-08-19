@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { CtxData } from "../../action-utils/api-types";
-import type { DispatchStatus } from "../../db/schema";
+import type { DispatchStatus, OrderStatus } from "../../db/schema";
 import { getDb, newId } from "../../db/client";
 import { deliveryHubs, orders, restaurants } from "../../db/schema";
 import { dispatchStatuses } from "../../db/schema";
@@ -167,4 +167,141 @@ export async function setDispatchStatus(
 		updatedAt: now,
 	};
 	return { ok: true as const, job, hubId: hub.id };
+}
+
+async function toJob(
+	ctx: EventContext<Env, never, CtxData>,
+	order: {
+		id: string;
+		restaurantId: string;
+		customerPhone: string | null;
+		customerAddress: string | null;
+		customerName: string | null;
+		status: OrderStatus;
+		updatedAt: string;
+	},
+	status?: DispatchStatus,
+): Promise<DispatchJob> {
+	const db = getDb(ctx);
+	const [resto] = await db
+		.select()
+		.from(restaurants)
+		.where(eq(restaurants.id, order.restaurantId))
+		.limit(1)
+		.all();
+	return {
+		id: order.id,
+		restaurantId: order.restaurantId,
+		restaurantName: resto?.name ?? "Restaurant",
+		phone: order.customerPhone,
+		address: order.customerAddress,
+		customerName: order.customerName,
+		status: status ?? toDispatchStatus(order.status),
+		updatedAt: order.updatedAt,
+	};
+}
+
+export async function createDispatchJob(
+	ctx: EventContext<Env, never, CtxData>,
+	input: {
+		restaurantId: string;
+		customerName?: string;
+		phone?: string;
+		address?: string;
+		status?: DispatchStatus;
+	},
+) {
+	const hub = await getHubForRestaurant(ctx, input.restaurantId);
+	if (!hub) {
+		return { ok: false as const, error: "Aucun centre." };
+	}
+	const status = input.status ?? "pending";
+	if (!dispatchStatuses.includes(status)) {
+		return { ok: false as const, error: "Statut invalide." };
+	}
+	const db = getDb(ctx);
+	const now = new Date().toISOString();
+	const id = newId("ord");
+	await db.insert(orders).values({
+		id,
+		restaurantId: input.restaurantId,
+		type: "livraison",
+		status: fromDispatchStatus(status),
+		source: "manual",
+		customerName: input.customerName?.trim() || null,
+		customerPhone: input.phone?.trim() || null,
+		customerAddress: input.address?.trim() || null,
+		updatedAt: now,
+	});
+	const [order] = await db
+		.select()
+		.from(orders)
+		.where(eq(orders.id, id))
+		.limit(1)
+		.all();
+	if (!order) {
+		return { ok: false as const, error: "Création impossible." };
+	}
+	return {
+		ok: true as const,
+		job: await toJob(ctx, order, status),
+		hubId: hub.id,
+	};
+}
+
+export async function updateDispatchJob(
+	ctx: EventContext<Env, never, CtxData>,
+	input: {
+		orderId: string;
+		restaurantId: string;
+		customerName?: string;
+		phone?: string;
+		address?: string;
+		status?: DispatchStatus;
+	},
+) {
+	const hub = await getHubForRestaurant(ctx, input.restaurantId);
+	if (!hub) {
+		return { ok: false as const, error: "Aucun centre." };
+	}
+	const memberIds = await listHubRestaurantIds(ctx, hub.id);
+	const db = getDb(ctx);
+	const [order] = await db
+		.select()
+		.from(orders)
+		.where(eq(orders.id, input.orderId))
+		.limit(1)
+		.all();
+	if (!order || !memberIds.includes(order.restaurantId)) {
+		return { ok: false as const, error: "Course introuvable." };
+	}
+	const status = input.status ?? toDispatchStatus(order.status);
+	if (!dispatchStatuses.includes(status)) {
+		return { ok: false as const, error: "Statut invalide." };
+	}
+	const now = new Date().toISOString();
+	await db
+		.update(orders)
+		.set({
+			customerName: input.customerName?.trim() || null,
+			customerPhone: input.phone?.trim() || null,
+			customerAddress: input.address?.trim() || null,
+			status: fromDispatchStatus(status),
+			updatedAt: now,
+		})
+		.where(eq(orders.id, order.id));
+	const [updated] = await db
+		.select()
+		.from(orders)
+		.where(eq(orders.id, order.id))
+		.limit(1)
+		.all();
+	if (!updated) {
+		return { ok: false as const, error: "Mise à jour impossible." };
+	}
+	return {
+		ok: true as const,
+		job: await toJob(ctx, updated, status),
+		hubId: hub.id,
+	};
 }

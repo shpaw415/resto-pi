@@ -1,4 +1,8 @@
-import { GET as loadJobs, POST as setJobStatus } from "@api/private/ops/dispatch";
+import {
+	GET as loadJobs,
+	POST as setJobStatus,
+	PUT as saveJob,
+} from "@api/private/ops/dispatch";
 import Button from "@shpaw415/mui-lite/Button";
 import Chip from "@shpaw415/mui-lite/Chip";
 import Paper from "@shpaw415/mui-lite/Paper";
@@ -22,12 +26,28 @@ function option(value: string, label: string) {
 
 const STATUSES: DispatchStatus[] = ["pending", "need_prep", "ready", "done"];
 
-export function DispatchBoard({ restaurantId }: { restaurantId?: string }) {
+const emptyForm = {
+	id: "",
+	customerName: "",
+	phone: "",
+	address: "",
+	status: "pending" as DispatchStatus,
+};
+
+export function DispatchBoard({
+	restaurantId,
+	editable = false,
+}: {
+	restaurantId?: string;
+	editable?: boolean;
+}) {
 	const live = useOptionalRestoLive();
 	const [hubName, setHubName] = useState("Centre");
 	const [jobs, setJobs] = useState<DispatchJob[]>([]);
 	const [statusFilter, setStatusFilter] = useState("");
 	const [addressFilter, setAddressFilter] = useState("");
+	const [form, setForm] = useState(emptyForm);
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		void loadJobs(restaurantId ?? "").then((result) => {
@@ -74,15 +94,51 @@ export function DispatchBoard({ restaurantId }: { restaurantId?: string }) {
 		});
 	}, [jobs, statusFilter, addressFilter]);
 
+	function startEdit(job: DispatchJob) {
+		setForm({
+			id: job.id,
+			customerName: job.customerName ?? "",
+			phone: job.phone ?? "",
+			address: job.address ?? "",
+			status: job.status,
+		});
+		setError(null);
+	}
+
+	async function persist(job: DispatchJob) {
+		setJobs((current) => {
+			const next = current.filter((item) => item.id !== job.id);
+			return [job, ...next];
+		});
+		live?.sendDispatch(job);
+	}
+
 	async function changeStatus(job: DispatchJob, status: DispatchStatus) {
 		const result = await setJobStatus(job.id, status, restaurantId ?? "");
 		if (!result.ok) {
 			return;
 		}
-		setJobs((current) =>
-			current.map((item) => (item.id === result.job.id ? result.job : item)),
+		await persist(result.job);
+	}
+
+	async function submit() {
+		setError(null);
+		const result = await saveJob(
+			{
+				id: form.id || undefined,
+				customerName: form.customerName,
+				phone: form.phone,
+				address: form.address,
+				status: form.status,
+			},
+			restaurantId ?? "",
 		);
-		live?.sendDispatch(result.job);
+		if (!result.ok) {
+			setError(result.error);
+			return;
+		}
+		await persist(result.job);
+		setForm(emptyForm);
 	}
 
 	return (
@@ -91,7 +147,9 @@ export function DispatchBoard({ restaurantId }: { restaurantId?: string }) {
 				{hubName}
 			</Typography>
 			<Typography variant="body2" color="secondary">
-				Courses partagées entre restaurants du même centre.
+				{editable
+					? "Ajoute ou modifie les courses du centre."
+					: "Consultation seulement — le resto gère les courses."}
 			</Typography>
 			<div className="grid gap-3 sm:grid-cols-2">
 				<Select
@@ -112,6 +170,73 @@ export function DispatchBoard({ restaurantId }: { restaurantId?: string }) {
 					}
 				/>
 			</div>
+			{editable ? (
+				<Paper elevation={1} className="p-4">
+					<Stack spacing={1.5}>
+						<Typography variant="subtitle1">
+							{form.id ? "Modifier la course" : "Nouvelle course"}
+						</Typography>
+						<TextField
+							label="Nom"
+							value={form.customerName}
+							onChange={(event) =>
+								setForm((current) => ({
+									...current,
+									customerName: (event.target as HTMLInputElement).value,
+								}))
+							}
+						/>
+						<TextField
+							label="Téléphone"
+							value={form.phone}
+							onChange={(event) =>
+								setForm((current) => ({
+									...current,
+									phone: (event.target as HTMLInputElement).value,
+								}))
+							}
+						/>
+						<TextField
+							label="Adresse"
+							value={form.address}
+							onChange={(event) =>
+								setForm((current) => ({
+									...current,
+									address: (event.target as HTMLInputElement).value,
+								}))
+							}
+						/>
+						<Select
+							name="job-status"
+							label="Statut"
+							value={form.status}
+							onSelect={(value) =>
+								setForm((current) => ({
+									...current,
+									status: String(value) as DispatchStatus,
+								}))
+							}
+						>
+							{STATUSES.map((status) => option(status, DISPATCH_LABELS[status]))}
+						</Select>
+						{error ? (
+							<Typography variant="caption" color="error">
+								{error}
+							</Typography>
+						) : null}
+						<Stack direction="row" spacing={1}>
+							<Button variant="contained" onClick={() => void submit()}>
+								{form.id ? "Enregistrer" : "Ajouter"}
+							</Button>
+							{form.id ? (
+								<Button variant="text" onClick={() => setForm(emptyForm)}>
+									Annuler
+								</Button>
+							) : null}
+						</Stack>
+					</Stack>
+				</Paper>
+			) : null}
 			{visible.length === 0 ? (
 				<Paper variant="outlined" className="p-4">
 					<Typography color="secondary">Aucune course.</Typography>
@@ -128,25 +253,38 @@ export function DispatchBoard({ restaurantId }: { restaurantId?: string }) {
 								<Typography variant="subtitle1">
 									{job.customerName || job.phone || "Client"}
 								</Typography>
-								<Chip size="small" color="primary" label={DISPATCH_LABELS[job.status]} />
+								<Chip
+									size="small"
+									color="primary"
+									label={DISPATCH_LABELS[job.status]}
+								/>
 							</Stack>
-							<Typography variant="body2">{job.address || "Sans adresse"}</Typography>
+							<Typography variant="body2">
+								{job.address || "Sans adresse"}
+							</Typography>
 							<Typography variant="caption" color="secondary">
 								{job.phone || "Sans téléphone"} · {job.restaurantName}
 							</Typography>
-							<div className="flex flex-wrap gap-2">
-								{STATUSES.map((status) => (
-									<Button
-										key={status}
-										size="small"
-										variant={job.status === status ? "contained" : "outlined"}
-										disabled={job.status === status}
-										onClick={() => void changeStatus(job, status)}
-									>
-										{DISPATCH_LABELS[status]}
+							{editable ? (
+								<>
+									<div className="flex flex-wrap gap-2">
+										{STATUSES.map((status) => (
+											<Button
+												key={status}
+												size="small"
+												variant={job.status === status ? "contained" : "outlined"}
+												disabled={job.status === status}
+												onClick={() => void changeStatus(job, status)}
+											>
+												{DISPATCH_LABELS[status]}
+											</Button>
+										))}
+									</div>
+									<Button size="small" variant="text" onClick={() => startEdit(job)}>
+										Modifier
 									</Button>
-								))}
-							</div>
+								</>
+							) : null}
 						</Stack>
 					</Paper>
 				))

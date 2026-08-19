@@ -26,7 +26,7 @@ export function OsmMap({
 	markers: MapMarker[];
 	zoom?: number;
 	viewKey?: string;
-	focus?: { id: string; lat: number; lng: number } | null;
+	focus?: { id: string; lat: number; lng: number; at?: number; zoom?: number } | null;
 }) {
 	const el = useRef<HTMLDivElement>(null);
 	const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -127,11 +127,13 @@ export function OsmMap({
 		if (!ready || !map || !focus) {
 			return;
 		}
-		map.setView([focus.lat, focus.lng], Math.max(map.getZoom(), 16), {
-			animate: true,
-		});
+		map.setView(
+			[focus.lat, focus.lng],
+			focus.zoom ?? Math.max(map.getZoom(), 16),
+			{ animate: true },
+		);
 		markersRef.current.get(focus.id)?.openPopup();
-	}, [ready, focus]);
+	}, [ready, focus?.id, focus?.lat, focus?.lng, focus?.at, focus?.zoom]);
 
 	return (
 		<div

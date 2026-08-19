@@ -28,7 +28,7 @@ export default function DispatchPage() {
 	const data = useLoader(loader_dispatch);
 	return (
 		<AdminPageFrame bootstrap={data?.bootstrap}>
-			<DispatchBoard restaurantId={data?.bootstrap.active?.id} />
+			<DispatchBoard restaurantId={data?.bootstrap.active?.id} editable />
 		</AdminPageFrame>
 	);
 }
