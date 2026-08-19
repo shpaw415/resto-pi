@@ -1,5 +1,6 @@
 "use dynamic";
 
+import { GET as geocodeAddress } from "@api/private/admin/geocode";
 import { POST as saveRestaurant } from "@api/private/admin/restaurants";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
@@ -54,7 +55,9 @@ export default function RestaurantsPage() {
 	const canCreate = canManageRestaurants(bootstrap?.identity.parsed ?? null);
 	const [form, setForm] = useState(emptyForm);
 	const [error, setError] = useState<string | null>(null);
+	const [geoLabel, setGeoLabel] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [geoBusy, setGeoBusy] = useState(false);
 	const editing = Boolean(form.id);
 
 	function setField(key: keyof typeof emptyForm, value: string | boolean) {
@@ -63,6 +66,7 @@ export default function RestaurantsPage() {
 
 	function startEdit(row: RestaurantRow) {
 		setError(null);
+		setGeoLabel(null);
 		setForm({
 			id: row.id,
 			name: row.name,
@@ -104,6 +108,21 @@ export default function RestaurantsPage() {
 			return;
 		}
 		window.location.reload();
+	}
+
+	async function convertAddress() {
+		setGeoBusy(true);
+		setError(null);
+		setGeoLabel(null);
+		const result = await geocodeAddress(form.address);
+		setGeoBusy(false);
+		if (!result.ok) {
+			setError(result.error);
+			return;
+		}
+		setField("lat", String(result.lat));
+		setField("lng", String(result.lng));
+		setGeoLabel(result.label);
 	}
 
 	return (
@@ -157,6 +176,20 @@ export default function RestaurantsPage() {
 										setField("phone", (event.target as HTMLInputElement).value)
 									}
 								/>
+								<Button
+									variant="outlined"
+									disabled={geoBusy || !form.address.trim()}
+									onClick={() => void convertAddress()}
+								>
+									{geoBusy
+										? "Conversion…"
+										: "Convertir l’adresse en lat / lng"}
+								</Button>
+								{geoLabel ? (
+									<Typography variant="caption" color="secondary">
+										Correspondance OSM : {geoLabel}
+									</Typography>
+								) : null}
 								<div className="grid gap-3 sm:grid-cols-2">
 									<TextField
 										label="Latitude (carte)"
@@ -188,6 +221,7 @@ export default function RestaurantsPage() {
 											onClick={() => {
 												setForm(emptyForm);
 												setError(null);
+												setGeoLabel(null);
 											}}
 										>
 											Annuler
@@ -225,6 +259,11 @@ export default function RestaurantsPage() {
 											{row.address ? (
 												<Typography variant="body2">{row.address}</Typography>
 											) : null}
+											<Typography variant="caption" color="secondary">
+												{row.lat != null && row.lng != null
+													? `${row.lat.toFixed(5)}, ${row.lng.toFixed(5)}`
+													: "Pas de coordonnées carte"}
+											</Typography>
 											{row.phone ? (
 												<Typography variant="caption" color="secondary">
 													{row.phone}

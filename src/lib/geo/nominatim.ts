@@ -1,4 +1,8 @@
-export type GeoPoint = { lat: number; lng: number };
+export type GeoPoint = {
+	lat: number;
+	lng: number;
+	label: string;
+};
 
 export async function geocodeAddress(
 	address: string,
@@ -24,6 +28,7 @@ export async function geocodeAddress(
 	const payload = (await response.json()) as Array<{
 		lat?: string;
 		lon?: string;
+		display_name?: string;
 	}>;
 	const hit = payload[0];
 	const lat = Number(hit?.lat);
@@ -31,7 +36,7 @@ export async function geocodeAddress(
 	if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
 		return null;
 	}
-	return { lat, lng };
+	return { lat, lng, label: hit?.display_name?.trim() || query };
 }
 
 export function withQuebecHint(address: string): string {
