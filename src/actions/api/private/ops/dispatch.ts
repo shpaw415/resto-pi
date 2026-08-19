@@ -53,9 +53,9 @@ export async function POST(
 export async function PUT(
 	body: {
 		id?: string;
-		customerName?: string;
 		phone?: string;
 		address?: string;
+		note?: string;
 		status?: DispatchStatus;
 	},
 	restaurantId: string,
@@ -76,17 +76,17 @@ export async function PUT(
 		return updateDispatchJob(ctx, {
 			orderId: body.id,
 			restaurantId: access.restaurantId,
-			customerName: body.customerName,
 			phone: body.phone,
 			address: body.address,
+			note: body.note,
 			status: body.status,
 		});
 	}
 	return createDispatchJob(ctx, {
 		restaurantId: access.restaurantId,
-		customerName: body.customerName,
 		phone: body.phone,
 		address: body.address,
+		note: body.note,
 		status: body.status,
 	});
 }

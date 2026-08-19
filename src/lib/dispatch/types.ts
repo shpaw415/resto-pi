@@ -7,6 +7,7 @@ export type DispatchJob = {
 	phone: string | null;
 	address: string | null;
 	customerName: string | null;
+	note: string | null;
 	status: DispatchStatus;
 	updatedAt: string;
 };

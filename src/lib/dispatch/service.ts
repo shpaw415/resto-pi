@@ -113,6 +113,7 @@ export async function listHubJobs(
 			phone: row.customerPhone,
 			address: row.customerAddress,
 			customerName: row.customerName,
+			note: row.notes,
 			status: toDispatchStatus(row.status),
 			updatedAt: row.updatedAt,
 		})),
@@ -163,6 +164,7 @@ export async function setDispatchStatus(
 		phone: order.customerPhone,
 		address: order.customerAddress,
 		customerName: order.customerName,
+		note: order.notes,
 		status: input.status,
 		updatedAt: now,
 	};
@@ -177,6 +179,7 @@ async function toJob(
 		customerPhone: string | null;
 		customerAddress: string | null;
 		customerName: string | null;
+		notes?: string | null;
 		status: OrderStatus;
 		updatedAt: string;
 	},
@@ -196,6 +199,7 @@ async function toJob(
 		phone: order.customerPhone,
 		address: order.customerAddress,
 		customerName: order.customerName,
+		note: order.notes ?? null,
 		status: status ?? toDispatchStatus(order.status),
 		updatedAt: order.updatedAt,
 	};
@@ -205,12 +209,17 @@ export async function createDispatchJob(
 	ctx: EventContext<Env, never, CtxData>,
 	input: {
 		restaurantId: string;
-		customerName?: string;
 		phone?: string;
 		address?: string;
+		note?: string;
 		status?: DispatchStatus;
 	},
 ) {
+	const phone = input.phone?.trim() || "";
+	const address = input.address?.trim() || "";
+	if (!phone || !address) {
+		return { ok: false as const, error: "Téléphone et adresse requis." };
+	}
 	const hub = await getHubForRestaurant(ctx, input.restaurantId);
 	if (!hub) {
 		return { ok: false as const, error: "Aucun centre." };
@@ -228,9 +237,9 @@ export async function createDispatchJob(
 		type: "livraison",
 		status: fromDispatchStatus(status),
 		source: "manual",
-		customerName: input.customerName?.trim() || null,
-		customerPhone: input.phone?.trim() || null,
-		customerAddress: input.address?.trim() || null,
+		customerPhone: phone,
+		customerAddress: address,
+		notes: input.note?.trim() || null,
 		updatedAt: now,
 	});
 	const [order] = await db
@@ -254,12 +263,17 @@ export async function updateDispatchJob(
 	input: {
 		orderId: string;
 		restaurantId: string;
-		customerName?: string;
 		phone?: string;
 		address?: string;
+		note?: string;
 		status?: DispatchStatus;
 	},
 ) {
+	const phone = input.phone?.trim() || "";
+	const address = input.address?.trim() || "";
+	if (!phone || !address) {
+		return { ok: false as const, error: "Téléphone et adresse requis." };
+	}
 	const hub = await getHubForRestaurant(ctx, input.restaurantId);
 	if (!hub) {
 		return { ok: false as const, error: "Aucun centre." };
@@ -283,9 +297,9 @@ export async function updateDispatchJob(
 	await db
 		.update(orders)
 		.set({
-			customerName: input.customerName?.trim() || null,
-			customerPhone: input.phone?.trim() || null,
-			customerAddress: input.address?.trim() || null,
+			customerPhone: phone,
+			customerAddress: address,
+			notes: input.note?.trim() || null,
 			status: fromDispatchStatus(status),
 			updatedAt: now,
 		})

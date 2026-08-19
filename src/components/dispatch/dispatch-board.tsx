@@ -3,8 +3,15 @@ import {
 	POST as setJobStatus,
 	PUT as saveJob,
 } from "@api/private/ops/dispatch";
+import AddIcon from "@material-design-icons/svg/filled/add.svg";
 import Button from "@shpaw415/mui-lite/Button";
 import Chip from "@shpaw415/mui-lite/Chip";
+import Dialog, {
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+} from "@shpaw415/mui-lite/Dialog";
+import FAB from "@shpaw415/mui-lite/FloatingActionButton";
 import Paper from "@shpaw415/mui-lite/Paper";
 import Select from "@shpaw415/mui-lite/Select";
 import Stack from "@shpaw415/mui-lite/Stack";
@@ -28,9 +35,9 @@ const STATUSES: DispatchStatus[] = ["pending", "need_prep", "ready", "done"];
 
 const emptyForm = {
 	id: "",
-	customerName: "",
 	phone: "",
 	address: "",
+	note: "",
 	status: "pending" as DispatchStatus,
 };
 
@@ -47,6 +54,7 @@ export function DispatchBoard({
 	const [statusFilter, setStatusFilter] = useState("");
 	const [addressFilter, setAddressFilter] = useState("");
 	const [form, setForm] = useState(emptyForm);
+	const [open, setOpen] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
@@ -94,15 +102,22 @@ export function DispatchBoard({
 		});
 	}, [jobs, statusFilter, addressFilter]);
 
+	function openCreate() {
+		setForm(emptyForm);
+		setError(null);
+		setOpen(true);
+	}
+
 	function startEdit(job: DispatchJob) {
 		setForm({
 			id: job.id,
-			customerName: job.customerName ?? "",
 			phone: job.phone ?? "",
 			address: job.address ?? "",
+			note: job.note ?? "",
 			status: job.status,
 		});
 		setError(null);
+		setOpen(true);
 	}
 
 	async function persist(job: DispatchJob) {
@@ -123,12 +138,16 @@ export function DispatchBoard({
 
 	async function submit() {
 		setError(null);
+		if (!form.phone.trim() || !form.address.trim()) {
+			setError("Téléphone et adresse requis.");
+			return;
+		}
 		const result = await saveJob(
 			{
 				id: form.id || undefined,
-				customerName: form.customerName,
 				phone: form.phone,
 				address: form.address,
+				note: form.note,
 				status: form.status,
 			},
 			restaurantId ?? "",
@@ -138,6 +157,7 @@ export function DispatchBoard({
 			return;
 		}
 		await persist(result.job);
+		setOpen(false);
 		setForm(emptyForm);
 	}
 
@@ -170,73 +190,6 @@ export function DispatchBoard({
 					}
 				/>
 			</div>
-			{editable ? (
-				<Paper elevation={1} className="p-4">
-					<Stack spacing={1.5}>
-						<Typography variant="subtitle1">
-							{form.id ? "Modifier la course" : "Nouvelle course"}
-						</Typography>
-						<TextField
-							label="Nom"
-							value={form.customerName}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									customerName: (event.target as HTMLInputElement).value,
-								}))
-							}
-						/>
-						<TextField
-							label="Téléphone"
-							value={form.phone}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									phone: (event.target as HTMLInputElement).value,
-								}))
-							}
-						/>
-						<TextField
-							label="Adresse"
-							value={form.address}
-							onChange={(event) =>
-								setForm((current) => ({
-									...current,
-									address: (event.target as HTMLInputElement).value,
-								}))
-							}
-						/>
-						<Select
-							name="job-status"
-							label="Statut"
-							value={form.status}
-							onSelect={(value) =>
-								setForm((current) => ({
-									...current,
-									status: String(value) as DispatchStatus,
-								}))
-							}
-						>
-							{STATUSES.map((status) => option(status, DISPATCH_LABELS[status]))}
-						</Select>
-						{error ? (
-							<Typography variant="caption" color="error">
-								{error}
-							</Typography>
-						) : null}
-						<Stack direction="row" spacing={1}>
-							<Button variant="contained" onClick={() => void submit()}>
-								{form.id ? "Enregistrer" : "Ajouter"}
-							</Button>
-							{form.id ? (
-								<Button variant="text" onClick={() => setForm(emptyForm)}>
-									Annuler
-								</Button>
-							) : null}
-						</Stack>
-					</Stack>
-				</Paper>
-			) : null}
 			{visible.length === 0 ? (
 				<Paper variant="outlined" className="p-4">
 					<Typography color="secondary">Aucune course.</Typography>
@@ -251,7 +204,7 @@ export function DispatchBoard({
 								alignItems="center"
 							>
 								<Typography variant="subtitle1">
-									{job.customerName || job.phone || "Client"}
+									{job.phone || "Course"}
 								</Typography>
 								<Chip
 									size="small"
@@ -259,11 +212,14 @@ export function DispatchBoard({
 									label={DISPATCH_LABELS[job.status]}
 								/>
 							</Stack>
-							<Typography variant="body2">
-								{job.address || "Sans adresse"}
-							</Typography>
+							<Typography variant="body2">{job.address}</Typography>
+							{job.note ? (
+								<Typography variant="body2" color="secondary">
+									{job.note}
+								</Typography>
+							) : null}
 							<Typography variant="caption" color="secondary">
-								{job.phone || "Sans téléphone"} · {job.restaurantName}
+								{job.restaurantName}
 							</Typography>
 							{editable ? (
 								<>
@@ -272,7 +228,9 @@ export function DispatchBoard({
 											<Button
 												key={status}
 												size="small"
-												variant={job.status === status ? "contained" : "outlined"}
+												variant={
+													job.status === status ? "contained" : "outlined"
+												}
 												disabled={job.status === status}
 												onClick={() => void changeStatus(job, status)}
 											>
@@ -280,7 +238,11 @@ export function DispatchBoard({
 											</Button>
 										))}
 									</div>
-									<Button size="small" variant="text" onClick={() => startEdit(job)}>
+									<Button
+										size="small"
+										variant="text"
+										onClick={() => startEdit(job)}
+									>
 										Modifier
 									</Button>
 								</>
@@ -289,6 +251,91 @@ export function DispatchBoard({
 					</Paper>
 				))
 			)}
+			{editable ? (
+				<>
+					<FAB
+						color="primary"
+						variant="extended"
+						aria-label="Créer une course"
+						sx={{
+							position: "fixed",
+							right: 16,
+							bottom: 24,
+							zIndex: 30,
+						}}
+						onClick={openCreate}
+					>
+						<AddIcon />
+						+ Créer
+					</FAB>
+					<Dialog open={open} onClose={() => setOpen(false)} fullWidth>
+						<DialogTitle>
+							{form.id ? "Modifier la course" : "Nouvelle course"}
+						</DialogTitle>
+						<DialogContent>
+							<Stack spacing={1.5} className="pt-2">
+								<TextField
+									label="Téléphone"
+									value={form.phone}
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											phone: (event.target as HTMLInputElement).value,
+										}))
+									}
+								/>
+								<TextField
+									label="Adresse"
+									value={form.address}
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											address: (event.target as HTMLInputElement).value,
+										}))
+									}
+								/>
+								<TextField
+									label="Note (optionnel)"
+									value={form.note}
+									multiline={{ minRows: 2 }}
+									onChange={(event) =>
+										setForm((current) => ({
+											...current,
+											note: (event.target as HTMLInputElement).value,
+										}))
+									}
+								/>
+								<Select
+									name="job-status"
+									label="Statut"
+									value={form.status}
+									onSelect={(value) =>
+										setForm((current) => ({
+											...current,
+											status: String(value) as DispatchStatus,
+										}))
+									}
+								>
+									{STATUSES.map((status) =>
+										option(status, DISPATCH_LABELS[status]),
+									)}
+								</Select>
+								{error ? (
+									<Typography variant="caption" color="error">
+										{error}
+									</Typography>
+								) : null}
+							</Stack>
+						</DialogContent>
+						<DialogActions>
+							<Button onClick={() => setOpen(false)}>Annuler</Button>
+							<Button variant="contained" onClick={() => void submit()}>
+								{form.id ? "Enregistrer" : "Créer"}
+							</Button>
+						</DialogActions>
+					</Dialog>
+				</>
+			) : null}
 		</Stack>
 	);
 }
