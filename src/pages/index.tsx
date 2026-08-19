@@ -9,7 +9,7 @@ export default function HomePage() {
 	const auth = useAuth();
 	const session = useAuthSession();
 
-	useEffect(() => {
+	const onRedirect = (client?: typeof auth) => {
 		if (!auth?.isLoaded) {
 			return;
 		}
@@ -26,6 +26,14 @@ export default function HomePage() {
 			return;
 		}
 		navigate("/login");
+	};
+
+	auth?.addInitializationListener("redirect", (client) => {
+		onRedirect(client);
+	});
+
+	useEffect(() => {
+		onRedirect(auth);
 	}, [auth?.isLoaded, session.data?.role]);
 
 	return (
