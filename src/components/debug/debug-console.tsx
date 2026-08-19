@@ -1,14 +1,21 @@
 import Paper from "@shpaw415/mui-lite/Paper";
 import Typography from "@shpaw415/mui-lite/Typography";
 import { useEffect, useState } from "react";
-import { subscribeDebug, type DebugLine } from "../../lib/debug/logger";
+import {
+	isDebugEnabled,
+	subscribeDebug,
+	subscribeDebugMode,
+	type DebugLine,
+} from "../../lib/debug/logger";
 
 export function DebugConsole() {
+	const [on, setOn] = useState(isDebugEnabled);
 	const [lines, setLines] = useState<DebugLine[]>([]);
 
+	useEffect(() => subscribeDebugMode(setOn), []);
 	useEffect(() => subscribeDebug(setLines), []);
 
-	if (lines.length === 0) {
+	if (!on || lines.length === 0) {
 		return null;
 	}
 

@@ -51,7 +51,15 @@ export type KitchenStatus = (typeof kitchenStatuses)[number];
 export type PosAdapterId = (typeof posAdapters)[number];
 export type ApiKeyScope = (typeof apiKeyScopeValues)[number];
 export type RolePermission = (typeof rolePermissions)[number];
+export const dispatchStatuses = [
+	"pending",
+	"need_prep",
+	"ready",
+	"done",
+] as const;
+
 export type CourierAlertKind = (typeof courierAlertKinds)[number];
+export type DispatchStatus = (typeof dispatchStatuses)[number];
 
 const timestampColumns = {
 	createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -67,6 +75,13 @@ export const users = sqliteTable("users", {
 	...timestampColumns,
 });
 
+export const deliveryHubs = sqliteTable("delivery_hubs", {
+	id: text("id").primaryKey(),
+	slug: text("slug").notNull(),
+	name: text("name").notNull(),
+	...timestampColumns,
+});
+
 export const restaurants = sqliteTable(
 	"restaurants",
 	{
@@ -78,6 +93,9 @@ export const restaurants = sqliteTable(
 		lat: real("lat"),
 		lng: real("lng"),
 		timezone: text("timezone").notNull().default("America/Toronto"),
+		hubId: text("hub_id").references(() => deliveryHubs.id, {
+			onDelete: "set null",
+		}),
 		isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
 		...timestampColumns,
 	},

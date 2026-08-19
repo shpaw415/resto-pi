@@ -286,6 +286,14 @@ export default {
 					dist: "favicon.ico",
 				},
 				{
+					src: "static/notification.mp3",
+					dist: "notification.mp3",
+				},
+				{
+					src: "static/notification.wav",
+					dist: "notification.wav",
+				},
+				{
 					src: "assets",
 					dist: "assets",
 				},

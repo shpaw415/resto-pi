@@ -1,4 +1,5 @@
 import type { CourierAlertKind } from "../../db/schema";
+import type { DispatchJob } from "../dispatch/types";
 import type { ChatAuthorKind, ChatMessage } from "../ops/types";
 
 export type LiveAlert = {
@@ -32,6 +33,8 @@ export type LiveInbound =
 	| { type: "alert"; kind: CourierAlertKind }
 	| { type: "archive-alerts" }
 	| { type: "punch-out" }
+	| { type: "punch-in" }
+	| { type: "dispatch"; job: DispatchJob }
 	| { type: "remove-courier"; courierUserId: string }
 	| { type: "ping" };
 
@@ -49,6 +52,11 @@ export type LiveOutbound =
 	| { type: "alerts-archived"; ids: string[] }
 	| { type: "presence"; onlineCourierIds: string[] }
 	| { type: "courier-removed"; courierUserId: string }
+	| {
+			type: "punch-in";
+			courier: { userId: string; name: string | null };
+	  }
+	| { type: "dispatch"; job: DispatchJob }
 	| { type: "error"; error: string }
 	| { type: "pong" };
 
@@ -71,11 +79,15 @@ export function parseInbound(raw: string): LiveInbound | null {
 		if (
 			data.type === "ping" ||
 			data.type === "archive-alerts" ||
-			data.type === "punch-out"
+			data.type === "punch-out" ||
+			data.type === "punch-in"
 		) {
 			return data;
 		}
 		if (data.type === "remove-courier" && typeof data.courierUserId === "string") {
+			return data;
+		}
+		if (data.type === "dispatch" && data.job && typeof data.job.id === "string") {
 			return data;
 		}
 		if (data.type === "alert" && typeof data.kind === "string") {

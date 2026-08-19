@@ -2,7 +2,7 @@
 
 import { POST as archiveAlertsHttp } from "@api/private/admin/alerts";
 import { POST as removeCourierHttp } from "@api/private/admin/duty";
-import { RestoLiveProvider, useRestoLive } from "../../hooks/useRestoLive";
+import { useRestoLive } from "../../hooks/useRestoLive";
 import { createLoader, createPageConfig } from "@next/ssr";
 import { useLoader } from "@next/ssr/hooks";
 import Button from "@shpaw415/mui-lite/Button";
@@ -51,16 +51,6 @@ function ageLabel(iso: string): string {
 }
 
 export default function SuiviPage() {
-	const initial = useLoader(loader_suivi);
-	const restaurantId = initial?.bootstrap.active?.id;
-	return (
-		<RestoLiveProvider restaurantId={restaurantId}>
-			<SuiviBody />
-		</RestoLiveProvider>
-	);
-}
-
-function SuiviBody() {
 	const initial = useLoader(loader_suivi);
 	const live = useRestoLive();
 	const [alerts, setAlerts] = useState(initial?.alerts ?? []);

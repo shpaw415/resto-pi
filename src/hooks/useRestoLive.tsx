@@ -10,8 +10,10 @@ import {
 	useState,
 } from "react";
 import type { CourierAlertKind } from "../db/schema";
+import type { DispatchJob } from "../lib/dispatch/types";
 import type { LiveAlert, LiveCourier, LiveOutbound } from "../lib/live/protocol";
 import { debugLog } from "../lib/debug/logger";
+import { pushActivity } from "../lib/notify/center";
 import type { ChatAuthorKind, ChatMessage } from "../lib/ops/types";
 
 type RestoLiveValue = {
@@ -26,7 +28,10 @@ type RestoLiveValue = {
 	sendAlert: (kind: CourierAlertKind) => boolean;
 	archiveAlerts: () => boolean;
 	punchOut: () => boolean;
+	punchIn: () => boolean;
 	removeCourier: (courierUserId: string) => boolean;
+	dispatchJob: DispatchJob | null;
+	sendDispatch: (job: DispatchJob) => boolean;
 };
 
 const RestoLiveCtx = createContext<RestoLiveValue | null>(null);
@@ -57,6 +62,7 @@ export function RestoLiveProvider({
 	const [onlineCourierIds, setOnlineCourierIds] = useState<string[]>([]);
 	const [alerts, setAlerts] = useState<LiveAlert[]>([]);
 	const [authorKind, setAuthorKind] = useState<ChatAuthorKind>("staff");
+	const [dispatchJob, setDispatchJob] = useState<DispatchJob | null>(null);
 	const selfIdRef = useRef("");
 	const socketRef = useRef<WebSocket | null>(null);
 	const enabledRef = useRef(enabled);
@@ -131,6 +137,16 @@ export function RestoLiveProvider({
 							? current
 							: [...current, payload.message],
 					);
+					if (payload.message.authorUserId !== selfIdRef.current) {
+						pushActivity({
+							kind: "message",
+							title: "Nouveau message",
+							body:
+								payload.message.body.slice(0, 80) ||
+								payload.message.authorName ||
+								"Message",
+						});
+					}
 					return;
 				}
 				if (payload.type === "alert") {
@@ -139,6 +155,35 @@ export function RestoLiveProvider({
 							? current
 							: [payload.alert, ...current],
 					);
+					if (payload.alert.courierUserId !== selfIdRef.current) {
+						pushActivity({
+							kind: "alert",
+							title: payload.alert.label,
+							body: payload.alert.courierName || "Livreur",
+						});
+					}
+					return;
+				}
+				if (payload.type === "dispatch") {
+					setDispatchJob(payload.job);
+					pushActivity({
+						kind: "dispatch",
+						title: `Course ${payload.job.status}`,
+						body:
+							payload.job.address ||
+							payload.job.phone ||
+							payload.job.restaurantName,
+					});
+					return;
+				}
+				if (payload.type === "punch-in") {
+					if (payload.courier.userId !== selfIdRef.current) {
+						pushActivity({
+							kind: "punch-in",
+							title: "Livreur en service",
+							body: payload.courier.name || "Un livreur a pointé",
+						});
+					}
 					return;
 				}
 				if (payload.type === "alerts-archived") {
@@ -211,6 +256,15 @@ export function RestoLiveProvider({
 		return true;
 	}, []);
 
+	const punchIn = useCallback(() => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "punch-in" }));
+		return true;
+	}, []);
+
 	const punchOut = useCallback(() => {
 		const socket = socketRef.current;
 		if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -226,6 +280,15 @@ export function RestoLiveProvider({
 			return false;
 		}
 		socket.send(JSON.stringify({ type: "remove-courier", courierUserId }));
+		return true;
+	}, []);
+
+	const sendDispatch = useCallback((job: DispatchJob) => {
+		const socket = socketRef.current;
+		if (!socket || socket.readyState !== WebSocket.OPEN) {
+			return false;
+		}
+		socket.send(JSON.stringify({ type: "dispatch", job }));
 		return true;
 	}, []);
 
@@ -251,7 +314,10 @@ export function RestoLiveProvider({
 			sendAlert,
 			archiveAlerts,
 			punchOut,
+			punchIn,
 			removeCourier,
+			dispatchJob,
+			sendDispatch,
 		}),
 		[
 			connected,
@@ -265,7 +331,10 @@ export function RestoLiveProvider({
 			sendAlert,
 			archiveAlerts,
 			punchOut,
+			punchIn,
 			removeCourier,
+			dispatchJob,
+			sendDispatch,
 		],
 	);
 

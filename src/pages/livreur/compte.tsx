@@ -6,13 +6,20 @@ import { useLoader } from "@next/ssr/hooks";
 import Button from "@shpaw415/mui-lite/Button";
 import Paper from "@shpaw415/mui-lite/Paper";
 import Stack from "@shpaw415/mui-lite/Stack";
+import Switch from "@shpaw415/mui-lite/Switch";
 import Typography from "@shpaw415/mui-lite/Typography";
+import { useEffect, useState } from "react";
 import type { CtxData } from "../../action-utils/api-types";
 import { useLivreurTracking } from "../../hooks/useLivreurTracking";
 import { useOptionalRestoLive } from "../../hooks/useRestoLive";
 import { loadLivreurPage } from "../../lib/admin/load";
 import { logoutClient } from "../../lib/auth/access-token-cookie";
 import { canEnterCourier } from "../../lib/auth/identity";
+import {
+	hydrateDebugMode,
+	setDebugEnabled,
+	subscribeDebugMode,
+} from "../../lib/debug/logger";
 
 export const ssr_configs = createPageConfig({
 	callback() {
@@ -34,6 +41,12 @@ export default function LivreurComptePage() {
 	const tracking = useLivreurTracking();
 	const live = useOptionalRestoLive();
 	const data = useLoader(loader_livreur_compte);
+	const [devMode, setDevMode] = useState(false);
+
+	useEffect(() => {
+		setDevMode(hydrateDebugMode());
+		return subscribeDebugMode(setDevMode);
+	}, []);
 	if (!data) {
 		return null;
 	}
@@ -74,6 +87,18 @@ export default function LivreurComptePage() {
 			>
 				{tracking.tracking ? "Arrêter le GPS" : "Démarrer le GPS"}
 			</Button>
+			<Paper elevation={1} className="p-4">
+				<Switch
+					label="Mode debug"
+					checked={devMode}
+					onChange={(event) =>
+						setDebugEnabled((event.target as HTMLInputElement).checked)
+					}
+				/>
+				<Typography variant="caption" color="secondary">
+					Affiche les logs GPS / WebSocket sur Statut.
+				</Typography>
+			</Paper>
 			<Button
 				variant="outlined"
 				color="secondary"

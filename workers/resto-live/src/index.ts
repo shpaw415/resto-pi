@@ -113,6 +113,21 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			await this.handleArchive(peer);
 			return;
 		}
+		if (inbound.type === "dispatch") {
+			this.broadcast({ type: "dispatch", job: inbound.job });
+			this.ctx.waitUntil(this.fanoutDispatch(peer.restaurantId, inbound.job));
+			return;
+		}
+		if (inbound.type === "punch-in") {
+			if (peer.kind !== "courier") {
+				return;
+			}
+			this.broadcast({
+				type: "punch-in",
+				courier: { userId: peer.userId, name: peer.name },
+			});
+			return;
+		}
 		if (inbound.type === "punch-out") {
 			if (peer.kind !== "courier") {
 				return;
@@ -510,6 +525,42 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			}
 		}
 		this.broadcastPresence();
+	}
+
+	async relayDispatch(job: {
+		id: string;
+		restaurantId: string;
+		restaurantName: string;
+		phone: string | null;
+		address: string | null;
+		customerName: string | null;
+		status: "pending" | "need_prep" | "ready" | "done";
+		updatedAt: string;
+	}) {
+		this.broadcast({ type: "dispatch", job });
+	}
+
+	private async fanoutDispatch(
+		restaurantId: string,
+		job: Parameters<RestaurantLive["relayDispatch"]>[0],
+	) {
+		const resto = await this.env.DB.prepare(
+			"SELECT hub_id FROM restaurants WHERE id = ?",
+		)
+			.bind(restaurantId)
+			.first<{ hub_id: string | null }>();
+		if (!resto?.hub_id) {
+			return;
+		}
+		const siblings = await this.env.DB.prepare(
+			"SELECT id FROM restaurants WHERE hub_id = ? AND id != ?",
+		)
+			.bind(resto.hub_id, restaurantId)
+			.all<{ id: string }>();
+		for (const row of siblings.results ?? []) {
+			const stub = this.env.RESTO_LIVE.getByName(`resto:${row.id}`);
+			await stub.relayDispatch(job);
+		}
 	}
 
 	private broadcast(payload: LiveOutbound) {

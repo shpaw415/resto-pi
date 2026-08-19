@@ -4,6 +4,8 @@ import { usePath } from "@hooks/usePath";
 import CloseIcon from "@material-design-icons/svg/filled/close.svg";
 import LogoutIcon from "@material-design-icons/svg/filled/logout.svg";
 import MenuIcon from "@material-design-icons/svg/filled/menu.svg";
+import { NotificationCenter } from "../../components/notify/notification-center";
+import { RestoLiveProvider } from "../../hooks/useRestoLive";
 import AppBar from "@shpaw415/mui-lite/AppBar";
 import Box from "@shpaw415/mui-lite/Box";
 import Button from "@shpaw415/mui-lite/Button";
@@ -29,6 +31,7 @@ const adminNavItems = [
 	{ href: "/admin", label: "Tableau de bord", description: "Vue d’ensemble" },
 	{ href: "/admin/commandes", label: "Commandes", description: "Cuisine" },
 	{ href: "/admin/suivi", label: "Livreurs", description: "Carte OSM" },
+	{ href: "/admin/dispatch", label: "Centre", description: "Dispatch partagé" },
 	{ href: "/admin/catalogue", label: "Catalogue", description: "Menu POS" },
 	{ href: "/admin/restaurants", label: "Restaurants", description: "Fiches" },
 	{ href: "/admin/api", label: "API", description: "Clés externes" },
@@ -140,6 +143,7 @@ export default function AdminLayout({
 	);
 
 	return (
+		<RestoLiveProvider>
 		<div className="flex min-h-dvh">
 			{wide ? (
 				<Drawer variant="permanent" anchor="left" width={DRAWER_WIDTH} open>
@@ -174,6 +178,7 @@ export default function AdminLayout({
 								{currentLabel}
 							</Typography>
 						</div>
+						<NotificationCenter />
 						<Button
 							variant="text"
 							size="small"
@@ -193,5 +198,6 @@ export default function AdminLayout({
 				<Box className="min-w-0 flex-1 p-4 sm:p-6">{children}</Box>
 			</Box>
 		</div>
+		</RestoLiveProvider>
 	);
 }

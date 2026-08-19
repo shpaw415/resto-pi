@@ -1,6 +1,7 @@
 import { GET as loadDuty, POST as setDuty } from "@api/private/livreur/duty";
 import { useAuth } from "@hooks/useAuth";
 import ChatIcon from "@material-design-icons/svg/filled/chat.svg";
+import HubIcon from "@material-design-icons/svg/filled/hub.svg";
 import LocalShippingIcon from "@material-design-icons/svg/filled/local_shipping.svg";
 import MyLocationIcon from "@material-design-icons/svg/filled/my_location.svg";
 import PersonIcon from "@material-design-icons/svg/filled/person.svg";
@@ -19,12 +20,15 @@ import Toolbar from "@shpaw415/mui-lite/Toolbar";
 import Typography from "@shpaw415/mui-lite/Typography";
 import { navigate } from "frame-master-plugin-apply-react/utils";
 import { useEffect, useState } from "react";
+import { hydrateDebugMode } from "../../lib/debug/logger";
 import { LivreurTrackingProvider } from "../../hooks/useLivreurTracking";
+import { NotificationCenter } from "../../components/notify/notification-center";
 import { RestoLiveProvider, useOptionalRestoLive } from "../../hooks/useRestoLive";
 
 const tabs = [
 	{ value: "/livreur", label: "Statut", icon: <MyLocationIcon /> },
 	{ value: "/livreur/courses", label: "Courses", icon: <LocalShippingIcon /> },
+	{ value: "/livreur/dispatch", label: "Centre", icon: <HubIcon /> },
 	{ value: "/livreur/messages", label: "Messages", icon: <ChatIcon /> },
 	{ value: "/livreur/compte", label: "Compte", icon: <PersonIcon /> },
 ];
@@ -32,6 +36,9 @@ const tabs = [
 function currentTab(pathname: string) {
 	if (pathname.startsWith("/livreur/courses")) {
 		return "/livreur/courses";
+	}
+	if (pathname.startsWith("/livreur/dispatch")) {
+		return "/livreur/dispatch";
 	}
 	if (pathname.startsWith("/livreur/messages")) {
 		return "/livreur/messages";
@@ -44,16 +51,28 @@ function currentTab(pathname: string) {
 
 function LivreurDutyGate({
 	punchedIn,
+	announcePunch,
 	onPunchIn,
 	onPunchOut,
+	onAnnounced,
 	children,
 }: {
 	punchedIn: boolean;
+	announcePunch: boolean;
 	onPunchIn: () => void;
 	onPunchOut: () => void;
+	onAnnounced: () => void;
 	children: React.JSX.Element;
 }) {
 	const live = useOptionalRestoLive();
+
+	useEffect(() => {
+		if (punchedIn && live?.connected && announcePunch) {
+			live.punchIn();
+			onAnnounced();
+		}
+	}, [punchedIn, live?.connected, announcePunch]);
+
 	return (
 		<>
 			{children}
@@ -100,9 +119,11 @@ export default function LivreurLayout({
 	const auth = useAuth();
 	const [tab, setTab] = useState("/livreur");
 	const [punchedIn, setPunchedIn] = useState(false);
+	const [announcePunch, setAnnouncePunch] = useState(false);
 
 	useEffect(() => {
 		setTab(currentTab(window.location.pathname));
+		hydrateDebugMode();
 	}, []);
 
 	useEffect(() => {
@@ -116,6 +137,7 @@ export default function LivreurLayout({
 	async function punchIn() {
 		const result = await setDuty(true);
 		if (result.ok) {
+			setAnnouncePunch(true);
 			setPunchedIn(true);
 		}
 	}
@@ -136,8 +158,10 @@ export default function LivreurLayout({
 			<LivreurTrackingProvider active={punchedIn}>
 				<LivreurDutyGate
 					punchedIn={punchedIn}
+					announcePunch={announcePunch}
 					onPunchIn={() => void punchIn()}
 					onPunchOut={() => void punchOut()}
+					onAnnounced={() => setAnnouncePunch(false)}
 				>
 					<div className="livreur-shell flex min-h-dvh flex-col">
 						<AppBar color="primary" position="sticky" elevation={0}>
@@ -154,6 +178,7 @@ export default function LivreurLayout({
 										{punchedIn ? " · actif" : " · hors service"}
 									</Typography>
 								</div>
+								<NotificationCenter />
 							</Toolbar>
 						</AppBar>
 						<main className="min-w-0 flex-1 overflow-x-clip px-3 pb-3 pt-3">
