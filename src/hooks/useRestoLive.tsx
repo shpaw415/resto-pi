@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { CourierAlertKind } from "../db/schema";
 import type { LiveAlert, LiveCourier, LiveOutbound } from "../lib/live/protocol";
+import { debugLog } from "../lib/debug/logger";
 import type { ChatAuthorKind, ChatMessage } from "../lib/ops/types";
 
 type RestoLiveValue = {
@@ -63,6 +64,7 @@ export function RestoLiveProvider({
 
 	useEffect(() => {
 		if (!enabled) {
+			debugLog("ws", "disabled — close");
 			socketRef.current?.close();
 			socketRef.current = null;
 			setConnected(false);
@@ -76,18 +78,29 @@ export function RestoLiveProvider({
 			if (!enabledRef.current) {
 				return;
 			}
+			debugLog("ws", `session restaurant=${restaurantId || "auto"}`);
 			const session = await loadLiveSession(restaurantId ?? "");
-			if (closed || !session.ok) {
+			if (closed) {
 				return;
 			}
+			if (!session.ok) {
+				debugLog("ws", `session échec: ${session.error}`);
+				return;
+			}
+			const url = toWsUrl(session.url);
+			debugLog("ws", `open ${session.mode} ${url.split("?")[0]}`);
 			setAuthorKind(session.authorKind);
 			selfIdRef.current = session.userId;
-			socket = new WebSocket(toWsUrl(session.url));
+			socket = new WebSocket(url);
 			socketRef.current = socket;
 			socket.onopen = () => {
+				debugLog("ws", "connected");
 				if (!closed) {
 					setConnected(true);
 				}
+			};
+			socket.onerror = () => {
+				debugLog("ws", "error");
 			};
 			socket.onmessage = (event) => {
 				const payload = JSON.parse(String(event.data)) as LiveOutbound;
@@ -145,7 +158,8 @@ export function RestoLiveProvider({
 					}
 				}
 			};
-			socket.onclose = () => {
+			socket.onclose = (event) => {
+				debugLog("ws", `close ${event.code} ${event.reason || ""}`);
 				setConnected(false);
 				socketRef.current = null;
 				if (!closed && enabledRef.current) {

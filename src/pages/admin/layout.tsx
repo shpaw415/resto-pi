@@ -1,3 +1,4 @@
+import { GET as listRestaurants } from "@api/private/admin/restaurants";
 import { useAuth, useAuthSession } from "@hooks/useAuth";
 import { usePath } from "@hooks/usePath";
 import CloseIcon from "@material-design-icons/svg/filled/close.svg";
@@ -51,6 +52,7 @@ export default function AdminLayout({
 	const pathname = usePath();
 	const [open, setOpen] = useState(false);
 	const [wide, setWide] = useState(false);
+	const [tenantLabel, setTenantLabel] = useState<string | null>(null);
 
 	useEffect(() => {
 		setOpen(false);
@@ -73,12 +75,23 @@ export default function AdminLayout({
 		session.data?.role ??
 			(auth as { userMeta?: { role?: string } } | null)?.userMeta?.role,
 	);
+
+	useEffect(() => {
+		if (parsed?.permission !== "user") {
+			return;
+		}
+		void listRestaurants().then((rows) => {
+			const match = rows.find((row) => row.slug === parsed.tenant);
+			setTenantLabel(match?.name ?? parsed.tenant);
+		});
+	}, [parsed?.permission, parsed?.tenant]);
+
 	const pageLabel = adminNavItems.find((item) =>
 		isActive(pathname, item.href),
 	)?.label;
 	const currentLabel =
 		parsed?.permission === "user"
-			? `staff ${parsed.tenant}`
+			? `staff ${tenantLabel ?? parsed.tenant}`
 			: (pageLabel ?? "Admin");
 
 	const navList = (

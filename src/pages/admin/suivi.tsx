@@ -66,6 +66,11 @@ function SuiviBody() {
 	const [alerts, setAlerts] = useState(initial?.alerts ?? []);
 	const [confirmArchive, setConfirmArchive] = useState(false);
 	const [archiving, setArchiving] = useState(false);
+	const [focus, setFocus] = useState<{
+		id: string;
+		lat: number;
+		lng: number;
+	} | null>(null);
 	const couriers: CourierLivePosition[] =
 		live.couriers.length > 0 ? live.couriers : (initial?.couriers ?? []);
 	const center = initial?.center ?? {
@@ -136,7 +141,51 @@ function SuiviBody() {
 						center={center}
 						markers={markers}
 						viewKey={initial.bootstrap.active?.id}
+						focus={focus}
 					/>
+					<Typography variant="h6" Element="h2">
+						Livreurs
+					</Typography>
+					{couriers.length === 0 ? (
+						<Typography variant="body2" color="secondary">
+							Aucun livreur actif sur la carte.
+						</Typography>
+					) : (
+						<Stack spacing={1}>
+							{couriers.map((courier) => (
+								<Paper key={`map-${courier.courierUserId}`} variant="outlined" className="p-3">
+									<Stack
+										direction="row"
+										justifyContent="space-between"
+										alignItems="center"
+										spacing={1}
+									>
+										<div>
+											<Typography variant="subtitle2">
+												{courier.name || courier.email || "Livreur"}
+											</Typography>
+											<Typography variant="caption" color="secondary">
+												{ageLabel(courier.recordedAt)}
+											</Typography>
+										</div>
+										<Button
+											size="small"
+											variant="contained"
+											onClick={() =>
+												setFocus({
+													id: courier.courierUserId,
+													lat: courier.lat,
+													lng: courier.lng,
+												})
+											}
+										>
+											Localiser
+										</Button>
+									</Stack>
+								</Paper>
+							))}
+						</Stack>
+					)}
 					<StaffCourierChat
 						restaurantId={initial.bootstrap.active?.id}
 						selfKind="staff"

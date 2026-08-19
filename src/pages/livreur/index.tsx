@@ -13,6 +13,7 @@ import { useState } from "react";
 import type { CtxData } from "../../action-utils/api-types";
 import type { CourierAlertKind } from "../../db/schema";
 import { useLivreurTracking } from "../../hooks/useLivreurTracking";
+import { DebugConsole } from "../../components/debug/debug-console";
 import { loadLivreurPage } from "../../lib/admin/load";
 import { canEnterCourier } from "../../lib/auth/identity";
 import { COURIER_ALERT_LABELS } from "../../lib/tracking/service";
@@ -113,6 +114,11 @@ export default function LivreurStatutPage() {
 							{tracking.coords.lat.toFixed(5)}, {tracking.coords.lng.toFixed(5)}
 						</Typography>
 					) : null}
+					<Typography variant="caption" color="secondary">
+						WS {live?.connected ? "ok" : "off"} ·{" "}
+						{window.isSecureContext ? "secure" : "insecure"}
+					</Typography>
+					<DebugConsole />
 				</Stack>
 			</Paper>
 			<Paper elevation={1} className="p-4">
