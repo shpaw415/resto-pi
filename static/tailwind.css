@@ -57,6 +57,17 @@ html[data-theme="dark"] .MUI_Theme_Wrapper {
 	color: #fff8f1;
 }
 
+.livreur-shell {
+	padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.livreur-bottom-nav .MUI_IconButton svg,
+.livreur-bottom-nav svg {
+	width: 1.5rem;
+	height: 1.5rem;
+	fill: currentColor;
+}
+
 body > .MUI_Theme_Wrapper,
 .MUI_Theme_Wrapper {
 	display: block;

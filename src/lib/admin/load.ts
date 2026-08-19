@@ -25,6 +25,8 @@ export type AdminBootstrap = {
 		name: string;
 		address: string | null;
 		phone: string | null;
+		lat: number | null;
+		lng: number | null;
 		isActive: boolean;
 	}>;
 	active: {
@@ -33,6 +35,8 @@ export type AdminBootstrap = {
 		name: string;
 		address: string | null;
 		phone: string | null;
+		lat: number | null;
+		lng: number | null;
 		isActive: boolean;
 	} | null;
 };
@@ -69,6 +73,8 @@ export async function loadAdminBootstrap(
 			name: row.name,
 			address: row.address,
 			phone: row.phone,
+			lat: row.lat,
+			lng: row.lng,
 			isActive: row.isActive,
 		})),
 		active: active
@@ -78,6 +84,8 @@ export async function loadAdminBootstrap(
 					name: active.name,
 					address: active.address,
 					phone: active.phone,
+					lat: active.lat,
+					lng: active.lng,
 					isActive: active.isActive,
 				}
 			: null,
@@ -144,7 +152,7 @@ export async function loadSuiviPage(ctx: EventContext<Env, never, CtxData>) {
 		return {
 			bootstrap,
 			couriers: [],
-			center: { lat: 45.5017, lng: -73.5673, name: "Montréal" },
+			center: { lat: 45.5756, lng: -70.882, name: "Lac-Mégantic" },
 		};
 	}
 	const [couriers, center] = await Promise.all([
@@ -158,8 +166,16 @@ export async function loadLivreurPage(ctx: EventContext<Env, never, CtxData>) {
 	const bootstrap = await loadAdminBootstrap(ctx);
 	const center = bootstrap.active
 		? await getRestaurantMapCenter(ctx, bootstrap.active.id)
-		: { lat: 45.5017, lng: -73.5673, name: "Restaurant" };
-	return { bootstrap, center };
+		: { lat: 45.5756, lng: -70.882, name: "Restaurant" };
+	const courses = bootstrap.active
+		? (await listOrders(ctx, bootstrap.active.id)).filter(
+				(order) =>
+					order.type === "livraison" &&
+					order.status !== "termine" &&
+					order.status !== "livre",
+			)
+		: [];
+	return { bootstrap, center, courses };
 }
 
 export async function loadPosPage(ctx: EventContext<Env, never, CtxData>) {

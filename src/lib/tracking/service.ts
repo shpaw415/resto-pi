@@ -2,6 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import type { CtxData } from "../../action-utils/api-types";
 import { getDb, newId } from "../../db/client";
 import { courierPositions, restaurants, users } from "../../db/schema";
+import { geocodeAddress, withQuebecHint } from "../geo/nominatim";
 
 export type CourierLivePosition = {
 	courierUserId: string;
@@ -86,9 +87,22 @@ export async function getRestaurantMapCenter(
 		.where(eq(restaurants.id, restaurantId))
 		.limit(1)
 		.all();
+	if (row?.lat != null && row?.lng != null) {
+		return { lat: row.lat, lng: row.lng, name: row.name };
+	}
+	if (row?.address) {
+		const geo = await geocodeAddress(withQuebecHint(row.address));
+		if (geo) {
+			await db
+				.update(restaurants)
+				.set({ lat: geo.lat, lng: geo.lng, updatedAt: new Date().toISOString() })
+				.where(eq(restaurants.id, restaurantId));
+			return { lat: geo.lat, lng: geo.lng, name: row.name };
+		}
+	}
 	return {
-		lat: row?.lat ?? 45.5017,
-		lng: row?.lng ?? -73.5673,
+		lat: 45.5756,
+		lng: -70.882,
 		name: row?.name ?? "Restaurant",
 	};
 }
