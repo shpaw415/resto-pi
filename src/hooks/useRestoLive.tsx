@@ -166,14 +166,16 @@ export function RestoLiveProvider({
 				}
 				if (payload.type === "dispatch") {
 					setDispatchJob(payload.job);
-					pushActivity({
-						kind: "dispatch",
-						title: `Course ${payload.job.status}`,
-						body:
-							payload.job.address ||
-							payload.job.phone ||
-							payload.job.restaurantName,
-					});
+					if (payload.actorUserId !== selfIdRef.current) {
+						pushActivity({
+							kind: "dispatch",
+							title: `Course ${payload.job.status}`,
+							body:
+								payload.job.address ||
+								payload.job.phone ||
+								payload.job.restaurantName,
+						});
+					}
 					return;
 				}
 				if (payload.type === "punch-in") {
@@ -288,7 +290,13 @@ export function RestoLiveProvider({
 		if (!socket || socket.readyState !== WebSocket.OPEN) {
 			return false;
 		}
-		socket.send(JSON.stringify({ type: "dispatch", job }));
+		socket.send(
+			JSON.stringify({
+				type: "dispatch",
+				job,
+				actorUserId: selfIdRef.current,
+			}),
+		);
 		return true;
 	}, []);
 

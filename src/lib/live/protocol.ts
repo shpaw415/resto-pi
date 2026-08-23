@@ -34,7 +34,7 @@ export type LiveInbound =
 	| { type: "archive-alerts" }
 	| { type: "punch-out" }
 	| { type: "punch-in" }
-	| { type: "dispatch"; job: DispatchJob }
+	| { type: "dispatch"; job: DispatchJob; actorUserId?: string }
 	| { type: "remove-courier"; courierUserId: string }
 	| { type: "ping" };
 
@@ -56,7 +56,7 @@ export type LiveOutbound =
 			type: "punch-in";
 			courier: { userId: string; name: string | null };
 	  }
-	| { type: "dispatch"; job: DispatchJob }
+	| { type: "dispatch"; job: DispatchJob; actorUserId?: string }
 	| { type: "error"; error: string }
 	| { type: "pong" };
 
