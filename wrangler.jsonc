@@ -11,7 +11,7 @@
 	// (or local `.env`). Never commit secrets. Do not add a `secrets` key.
 	// Replace KV / D1 placeholders with real Cloudflare resource IDs before deploy.
 	"vars": {
-		"BUN_VERSION": "1.3.13",
+		"BUN_VERSION": "1.4.0",
 		"SKIP_DEPENDENCY_INSTALL": "true",
 		"PUBLIC_AUTH_CLIENT_ID": "__resto_pi__",
 		"PUBLIC_AUTH_ISSUER": "https://auth.example.com",
@@ -21,14 +21,14 @@
 	"kv_namespaces": [
 		{
 			"binding": "DYNAMIC_PAGE_KV",
-			"id": "<kv-binding-id>"
+			"id": "f913cf18dd734a25b77d3855111e5693"
 		}
 	],
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "resto-pi",
-			"database_id": "00000000-0000-0000-0000-000000000001",
+			"database_name": "resto-pi-01",
+			"database_id": "d0759cb8-3485-4366-88ae-465deb6bc7db",
 			"migrations_dir": "drizzle"
 		}
 	]
