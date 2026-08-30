@@ -78,7 +78,8 @@
 	},
 	"include": [
 		"./src",
-		".frame-master/frame-master-custom-type.d.ts"
+		".frame-master/frame-master-custom-type.d.ts",
+		"./workers"
 	],
 	"exclude": [
 		".frame-master"

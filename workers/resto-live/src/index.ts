@@ -57,8 +57,8 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			}
 		});
 	}
-
-	async fetch(request: Request): Promise<Response> {
+	
+	override async fetch(request: Request): Promise<Response> {
 		if (request.headers.get("Upgrade") !== "websocket") {
 			return new Response("Expected websocket", { status: 426 });
 		}
@@ -68,14 +68,14 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		}
 		const pair = new WebSocketPair();
 		const [client, server] = Object.values(pair);
-		this.ctx.acceptWebSocket(server);
-		server.serializeAttachment(peer);
-		this.ctx.waitUntil(this.pushSnapshot(server));
+		this.ctx.acceptWebSocket(server!);
+		server!.serializeAttachment(peer);
+		this.ctx.waitUntil(this.pushSnapshot(server!));
 		this.broadcastPresence();
 		return new Response(null, { status: 101, webSocket: client });
 	}
 
-	async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
+	override async webSocketMessage(ws: WebSocket, raw: string | ArrayBuffer) {
 		if (typeof raw !== "string") {
 			return;
 		}
@@ -149,7 +149,7 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 		await this.handleChat(peer, inbound);
 	}
 
-	async webSocketClose(ws: WebSocket, code: number, reason: string) {
+	override async webSocketClose(ws: WebSocket, code: number, reason: string) {
 		ws.close(code, reason);
 		this.broadcastPresence();
 	}
@@ -540,6 +540,7 @@ export class RestaurantLive extends DurableObject<LiveEnv> {
 			customerName: string | null;
 			status: "pending" | "need_prep" | "ready" | "done";
 			updatedAt: string;
+			note: string | null;
 		},
 		actorUserId?: string,
 	) {
