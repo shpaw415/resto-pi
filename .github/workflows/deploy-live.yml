@@ -1,0 +1,35 @@
+name: Deploy resto-pi-live
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "workers/resto-live/**"
+      - "src/lib/live/**"
+      - "src/lib/ops/types.ts"
+      - "src/lib/tracking/labels.ts"
+      - "src/lib/dispatch/types.ts"
+      - ".github/workflows/deploy-live.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+      - run: bun install --frozen-lockfile
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy -c workers/resto-live/wrangler.jsonc
+          secrets: |
+            AUTH_SECRET
+        env:
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}

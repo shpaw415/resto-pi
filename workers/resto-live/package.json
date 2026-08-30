@@ -1,0 +1,12 @@
+{
+	"name": "resto-pi-live",
+	"private": true,
+	"version": "0.1.0",
+	"scripts": {
+		"deploy": "wrangler deploy"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^4.20260702.1",
+		"wrangler": "^4.127.1"
+	}
+}

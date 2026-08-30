@@ -6,9 +6,6 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
-	"vars": {
-		"BUN_VERSION": "1.4.0"
-	},
 	"durable_objects": {
 		"bindings": [
 			{
