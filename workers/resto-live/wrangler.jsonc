@@ -1,11 +1,14 @@
 {
 	"$schema": "../../node_modules/wrangler/config-schema.json",
-	"name": "resto-pi-01-live",
+	"name": "resto-pi-live-01",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-02-17",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"vars": {
+		"BUN_VERSION": "1.4.0"
+	},
 	"durable_objects": {
 		"bindings": [
 			{
