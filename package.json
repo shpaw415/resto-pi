@@ -9,7 +9,7 @@
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.5",
 		"drizzle-kit": "^0.31.10",
-		"typescript": "^5.9.3",
+		"typescript": "^7.0.2",
 		"wrangler": "^4.127.1"
 	},
 	"dependencies": {
@@ -46,8 +46,8 @@
 		"build:dev": "NODE_ENV=development bun frame-master build",
 		"check": "tsc --noEmit",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate:local": "wrangler d1 migrations apply resto-pi --local",
-		"db:migrate:remote": "wrangler d1 migrations apply resto-pi --remote",
+		"db:migrate:local": "wrangler d1 migrations apply resto-pi-01 --local",
+		"db:migrate:remote": "wrangler d1 migrations apply resto-pi-01 --remote",
 		"pos:fetchmenu": "bun scripts/test-colossal-fetchmenu.ts",
 		"pos:validate": "bun scripts/test-colossal-validate.ts"
 	}

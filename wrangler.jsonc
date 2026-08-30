@@ -13,10 +13,10 @@
 	"vars": {
 		"BUN_VERSION": "1.4.0",
 		"SKIP_DEPENDENCY_INSTALL": "true",
-		"PUBLIC_AUTH_CLIENT_ID": "__resto_pi__",
-		"PUBLIC_AUTH_ISSUER": "https://auth.example.com",
-		"PUBLIC_AUTH_REDIRECT_URI": "http://localhost:3000/callback",
-		"PUBLIC_LIVE_ORIGIN": "http://127.0.0.1:8788"
+		"PUBLIC_AUTH_CLIENT_ID": "__resto_pi_91c1109f",
+		"PUBLIC_AUTH_ISSUER": "https://99b7fcefea604fa0a583a6423a44f520-auth.webcreas.com",
+		"PUBLIC_AUTH_REDIRECT_URI": "https://resto-pi-01.webcreas.com/callback",
+		"PUBLIC_LIVE_ORIGIN": "https://resto-pi-01-ws.webcreas.com"
 	},
 	"kv_namespaces": [
 		{
@@ -29,7 +29,7 @@
 			"binding": "DB",
 			"database_name": "resto-pi-01",
 			"database_id": "d0759cb8-3485-4366-88ae-465deb6bc7db",
-			"migrations_dir": "drizzle"
+			"migrations_dir": "./drizzle"
 		}
 	]
 }
